@@ -135,6 +135,28 @@ const translations = {
       grammatical_range: 'Грамматика мен дәлдік',
     },
 
+    patterns: {
+      title: 'Қайталанатын қателер',
+      hint: 'Соңғы талпыныстарыңыздағы ең жиі кездескен қателер.',
+      occurrences: '{{n}} рет',
+      inAttempts: '{{n}} талпыныста',
+      empty: 'Қайталанатын қате әлі байқалмады.',
+    },
+
+    mistakes: {
+      article: 'Артикльдер (a / an / the)',
+      tense: 'Шақ',
+      agreement: 'Бастауыш пен баяндауыш үйлесімі',
+      preposition: 'Көмекші сөздер',
+      word_form: 'Сөз формасы',
+      word_order: 'Сөз тәртібі',
+      vocabulary: 'Сөз таңдау',
+      plural: 'Көптік жалғау',
+      spelling: 'Емле',
+      punctuation: 'Тыныс белгілері',
+      other: 'Басқа',
+    },
+
     history: {
       title: 'Талпыныстар тарихы',
       empty: 'Әзірге тарих жоқ. Бірінші талдаудан кейін осында пайда болады.',
@@ -287,6 +309,28 @@ const translations = {
       fluency_coherence: 'Fluency and coherence',
       lexical_resource: 'Lexical resource',
       grammatical_range: 'Grammatical range and accuracy',
+    },
+
+    patterns: {
+      title: 'Recurring mistakes',
+      hint: 'The mistakes that come up most often across your recent attempts.',
+      occurrences: '{{n}} times',
+      inAttempts: 'in {{n}} attempts',
+      empty: 'No repeated pattern yet.',
+    },
+
+    mistakes: {
+      article: 'Articles (a / an / the)',
+      tense: 'Verb tense',
+      agreement: 'Subject-verb agreement',
+      preposition: 'Prepositions',
+      word_form: 'Word form',
+      word_order: 'Word order',
+      vocabulary: 'Word choice',
+      plural: 'Plurals',
+      spelling: 'Spelling',
+      punctuation: 'Punctuation',
+      other: 'Other',
     },
 
     history: {

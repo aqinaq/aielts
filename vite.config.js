@@ -37,11 +37,20 @@ function serverlessApi() {
   }
 }
 
+// Server-side settings the dev-mode handler needs. Vite only surfaces VITE_* to
+// the client by design, so these are read explicitly and never bundled.
+const SERVER_ENV_KEYS = [
+  'DEEPSEEK_API_KEY',
+  'DEEPSEEK_MODEL',
+  'DEEPSEEK_REASONING_EFFORT',
+  'RATE_LIMIT_PER_HOUR',
+]
+
 export default defineConfig(({ mode }) => {
-  // Expose ANTHROPIC_API_KEY from .env / .env.local to the dev-mode handler.
-  // Vite only surfaces VITE_* to the client by design, so read it explicitly.
   const env = loadEnv(mode, process.cwd(), '')
-  process.env.ANTHROPIC_API_KEY ||= env.ANTHROPIC_API_KEY ?? ''
+  for (const key of SERVER_ENV_KEYS) {
+    if (!process.env[key] && env[key]) process.env[key] = env[key]
+  }
 
   return {
     plugins: [react(), tailwindcss(), serverlessApi()],

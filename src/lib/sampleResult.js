@@ -87,6 +87,7 @@ export const SAMPLE_RESULT = {
   corrections: [
     {
       original: 'two or three times in a week',
+      category: 'preposition',
       corrected: 'two or three times a week',
       explanation: {
         kk: 'Жиілікті білдіргенде «in» көмекші сөзі қажет емес: «times a week».',
@@ -95,6 +96,7 @@ export const SAMPLE_RESULT = {
     },
     {
       original: 'when i was child',
+      category: 'article',
       corrected: 'when i was a child',
       explanation: {
         kk: 'Санауға келетін зат есімнің алдында артикль керек: «a child».',
@@ -103,6 +105,7 @@ export const SAMPLE_RESULT = {
     },
     {
       original: 'my family go there every weekend',
+      category: 'tense',
       corrected: 'my family went there every weekend',
       explanation: {
         kk: 'Балалық шақ туралы әңгіме — өткен шақ керек: «went».',
@@ -111,6 +114,7 @@ export const SAMPLE_RESULT = {
     },
     {
       original: 'this place have many memories',
+      category: 'agreement',
       corrected: 'this place has many memories',
       explanation: {
         kk: '«This place» — үшінші жақ жекеше, сондықтан «has».',
@@ -119,6 +123,7 @@ export const SAMPLE_RESULT = {
     },
     {
       original: 'people can walking',
+      category: 'word_form',
       corrected: 'people can walk',
       explanation: {
         kk: 'Модаль етістіктен кейін негізгі етістік бастапқы формада тұрады.',
@@ -127,6 +132,7 @@ export const SAMPLE_RESULT = {
     },
     {
       original: 'there is also small cafe',
+      category: 'article',
       corrected: 'there is also a small cafe',
       explanation: {
         kk: 'Тағы бір түсіп қалған артикль: «a small cafe».',
@@ -135,6 +141,7 @@ export const SAMPLE_RESULT = {
     },
     {
       original: 'more fresh',
+      category: 'word_form',
       corrected: 'fresher',
       explanation: {
         kk: 'Бір буынды сын есімдер «-er» жалғауымен салыстырылады.',

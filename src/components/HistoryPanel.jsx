@@ -2,6 +2,7 @@ import { AlertCircle, Cloud, History, Loader2, LogIn, Trash2 } from 'lucide-reac
 
 import { useLanguage } from '../i18n'
 import ProgressChart from './ProgressChart'
+import MistakePatterns from './MistakePatterns'
 
 const formatDate = (timestamp, lang) =>
   new Date(timestamp).toLocaleDateString(lang === 'kk' ? 'kk-KZ' : 'en-GB', {
@@ -86,6 +87,8 @@ export default function HistoryPanel({
       ) : (
         <>
           <ProgressChart entries={entries} />
+
+          <MistakePatterns entries={entries} />
 
           <ul className="divide-y divide-slate-100">
             {entries.map((entry) => {
