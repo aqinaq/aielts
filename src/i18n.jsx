@@ -58,6 +58,17 @@ const translations = {
       languageNote: 'Дауыс тану ағылшын тілінде жұмыс істейді.',
     },
 
+    audio: {
+      label: 'Жазбаңызды тыңдаңыз',
+      note: 'Жазба тек осы бетте сақталады — бетті жаңартсаңыз жоғалады, ешқайда жіберілмейді.',
+    },
+
+    sample: {
+      button: 'Үлгі нәтижені көру',
+      badge: 'Үлгі',
+      note: 'Бұл — дайын үлгі, сіздің жауабыңыз емес. Өз мәтініңізді талдау үшін сол жақтан бастаңыз.',
+    },
+
     transcript: {
       label: 'Танылған мәтін',
       empty: 'Сөйлей бастаңыз…',
@@ -75,6 +86,8 @@ const translations = {
       clear: 'Тазалау',
       analyze: 'Талдау және бағалау',
       analyzing: 'Талдау жүріп жатыр…',
+      retry: 'Қайталап көру',
+      shortcutHint: 'немесе ⌘/Ctrl + Enter',
       print: 'PDF / Басып шығару',
     },
 
@@ -97,6 +110,7 @@ const translations = {
 
     result: {
       loading: 'AI мәтіңізді талдап жатыр…',
+      loadingHint: 'Әдетте 20–40 секунд алады',
       emptyState: 'Сөйлеңіз немесе мәтін енгізіңіз — нәтиже осы жерде шығады.',
       errorTitle: 'Талдау сәтсіз аяқталды',
       band: 'Band',
@@ -198,6 +212,17 @@ const translations = {
       languageNote: 'Speech recognition runs in English.',
     },
 
+    audio: {
+      label: 'Listen back',
+      note: 'The recording stays on this page only — it is never uploaded, and it is gone on reload.',
+    },
+
+    sample: {
+      button: 'See a sample analysis',
+      badge: 'Sample',
+      note: 'This is a pre-made example, not your own answer. Start on the left to analyze your own.',
+    },
+
     transcript: {
       label: 'Transcript',
       empty: 'Start speaking…',
@@ -215,6 +240,8 @@ const translations = {
       clear: 'Clear',
       analyze: 'Analyze and score',
       analyzing: 'Analyzing…',
+      retry: 'Try again',
+      shortcutHint: 'or ⌘/Ctrl + Enter',
       print: 'PDF / Print',
     },
 
@@ -237,6 +264,7 @@ const translations = {
 
     result: {
       loading: 'The AI is reading your text…',
+      loadingHint: 'Usually takes 20–40 seconds',
       emptyState: 'Speak or type something — your feedback will appear here.',
       errorTitle: 'Analysis failed',
       band: 'Band',

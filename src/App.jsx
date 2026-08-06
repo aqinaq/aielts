@@ -1,9 +1,10 @@
-import { useCallback, useMemo, useState } from 'react'
-import { AlertCircle, Keyboard, Mic, Sparkles } from 'lucide-react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { AlertCircle, Keyboard, Mic, RotateCcw, Sparkles, Wand2 } from 'lucide-react'
 
 import Header from './components/Header'
 import RecordButton from './components/RecordButton'
 import TranscriptArea from './components/TranscriptArea'
+import AudioPlayback from './components/AudioPlayback'
 import TextInput from './components/TextInput'
 import TaskInput from './components/TaskInput'
 import SpeechMetrics from './components/SpeechMetrics'
@@ -11,10 +12,12 @@ import AnalysisResult from './components/AnalysisResult'
 import HistoryPanel from './components/HistoryPanel'
 import Loader from './components/Loader'
 import { useSpeechRecognition } from './hooks/useSpeechRecognition'
+import { useAudioRecorder } from './hooks/useAudioRecorder'
 import { useAuth } from './hooks/useAuth'
 import { useHistory } from './hooks/useHistory'
 import { useLanguage } from './i18n'
 import { computeSpeechMetrics, formatDuration } from './lib/speechMetrics'
+import { SAMPLE_RESULT, SAMPLE_TEXT } from './lib/sampleResult'
 
 const MIN_WORDS = 8
 const MAX_CHARS = 12000
@@ -67,10 +70,29 @@ export default function App() {
     error: speechError,
     elapsedMs,
     chunkTimestamps,
-    toggleListening,
+    startListening,
     stopListening,
     resetSession,
   } = useSpeechRecognition({ lang: 'en-US', onResult: appendChunk })
+
+  const recorder = useAudioRecorder()
+
+  // Transcription and audio capture start and stop together — the recording is
+  // only useful next to the transcript it produced.
+  const stopCapture = useCallback(() => {
+    stopListening()
+    recorder.stop()
+  }, [recorder, stopListening])
+
+  const toggleCapture = useCallback(() => {
+    if (isListening) {
+      stopCapture()
+      return
+    }
+    recorder.reset()
+    recorder.start()
+    startListening()
+  }, [isListening, recorder, startListening, stopCapture])
 
   const speechMetrics = useMemo(() => {
     if (mode !== 'speak' || isListening || elapsedMs < 1000) return null
@@ -85,19 +107,22 @@ export default function App() {
   const canAnalyze = wordCount >= MIN_WORDS && !isAnalyzing && !isListening
 
   const switchMode = (nextMode) => {
-    if (nextMode === 'write') stopListening()
+    if (nextMode === 'write') stopCapture()
     setMode(nextMode)
   }
 
   const clearText = () => {
     patchDraft({ text: '' })
-    if (mode === 'speak') resetSession()
+    if (mode === 'speak') {
+      resetSession()
+      recorder.reset()
+    }
     setResult(null)
     setApiError(null)
   }
 
   const analyze = async () => {
-    stopListening()
+    stopCapture()
     setIsAnalyzing(true)
     setApiError(null)
     setResult(null)
@@ -142,6 +167,22 @@ export default function App() {
     }
   }
 
+  // ⌘/Ctrl + Enter submits from anywhere, including inside the textareas.
+  const shortcut = useRef({ analyze, canAnalyze })
+  useEffect(() => {
+    shortcut.current = { analyze, canAnalyze }
+  })
+  useEffect(() => {
+    const onKeyDown = (event) => {
+      if ((event.metaKey || event.ctrlKey) && event.key === 'Enter') {
+        event.preventDefault()
+        if (shortcut.current.canAnalyze) shortcut.current.analyze()
+      }
+    }
+    window.addEventListener('keydown', onKeyDown)
+    return () => window.removeEventListener('keydown', onKeyDown)
+  }, [])
+
   const openEntry = (entry) => {
     setApiError(null)
     setResult({
@@ -149,6 +190,17 @@ export default function App() {
       text: entry.text,
       mode: entry.mode === 'speak' ? 'speaking' : 'writing',
       previousBand: entry.previousBand,
+    })
+  }
+
+  const showSample = () => {
+    setApiError(null)
+    setResult({
+      data: SAMPLE_RESULT,
+      text: SAMPLE_TEXT,
+      mode: 'speaking',
+      previousBand: null,
+      isSample: true,
     })
   }
 
@@ -204,7 +256,7 @@ export default function App() {
               <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6">
                 {isSupported ? (
                   <>
-                    <RecordButton isListening={isListening} onToggle={toggleListening} />
+                    <RecordButton isListening={isListening} onToggle={toggleCapture} />
 
                     <p className="text-center text-xs text-slate-400">
                       {elapsedMs > 0 && (
@@ -241,6 +293,8 @@ export default function App() {
                   onClear={clearText}
                 />
 
+                {!isListening && <AudioPlayback src={recorder.audioUrl} />}
+
                 {speechMetrics && <SpeechMetrics metrics={speechMetrics} />}
               </div>
             ) : (
@@ -268,8 +322,9 @@ export default function App() {
                 {wordCount} {t('counter.words')}
                 {draft.taskMeta &&
                   ` / ${draft.taskMeta.minWords} ${t('task.minWords')}`}
-                {wordCount < MIN_WORDS &&
-                  ` · ${t('counter.minWords', { n: MIN_WORDS })}`}
+                {wordCount < MIN_WORDS
+                  ? ` · ${t('counter.minWords', { n: MIN_WORDS })}`
+                  : ` · ${t('actions.shortcutHint')}`}
               </p>
             </div>
           </section>
@@ -277,15 +332,28 @@ export default function App() {
           {/* Result side */}
           <section className="lg:sticky lg:top-10 lg:self-start print:col-span-2">
             <div className="rounded-2xl border border-slate-200 bg-white p-6 print:border-0 print:p-0">
-              {isAnalyzing && <Loader label={t('result.loading')} />}
+              {isAnalyzing && (
+                <Loader label={t('result.loading')} hint={t('result.loadingHint')} />
+              )}
 
               {!isAnalyzing && apiError && (
-                <div className="flex gap-3 rounded-xl bg-rose-50 p-4 text-sm text-rose-700">
-                  <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                  <div>
-                    <p className="font-medium">{t('result.errorTitle')}</p>
-                    <p className="mt-1">{apiError}</p>
+                <div className="space-y-3 rounded-xl bg-rose-50 p-4 text-sm text-rose-700">
+                  <div className="flex gap-3">
+                    <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                    <div>
+                      <p className="font-medium">{t('result.errorTitle')}</p>
+                      <p className="mt-1">{apiError}</p>
+                    </div>
                   </div>
+                  <button
+                    type="button"
+                    onClick={analyze}
+                    disabled={!canAnalyze}
+                    className="flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-700 transition hover:border-rose-300 disabled:opacity-50"
+                  >
+                    <RotateCcw className="size-3.5" aria-hidden="true" />
+                    {t('actions.retry')}
+                  </button>
                 </div>
               )}
 
@@ -295,15 +363,27 @@ export default function App() {
                   text={result.text}
                   mode={result.mode}
                   previousBand={result.previousBand}
+                  isSample={result.isSample}
                 />
               )}
 
               {!isAnalyzing && !apiError && !result && (
-                <div className="flex flex-col items-center justify-center gap-3 py-20 text-center">
+                <div className="flex flex-col items-center justify-center gap-4 py-20 text-center">
                   <span className="flex size-12 items-center justify-center rounded-full bg-slate-100">
                     <Sparkles className="size-5 text-slate-400" aria-hidden="true" />
                   </span>
                   <p className="text-sm text-slate-500">{t('result.emptyState')}</p>
+
+                  {/* Lets a first-time visitor see what the output looks like
+                      without an API key or an account. */}
+                  <button
+                    type="button"
+                    onClick={showSample}
+                    className="flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-indigo-300 hover:text-indigo-700"
+                  >
+                    <Wand2 className="size-3.5" aria-hidden="true" />
+                    {t('sample.button')}
+                  </button>
                 </div>
               )}
             </div>

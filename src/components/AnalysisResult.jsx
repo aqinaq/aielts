@@ -77,13 +77,27 @@ function List({ icon: Icon, title, items, tone, lang }) {
   )
 }
 
-export default function AnalysisResult({ result, text, mode, previousBand }) {
+export default function AnalysisResult({
+  result,
+  text,
+  mode,
+  previousBand,
+  isSample = false,
+}) {
   const { lang, t } = useLanguage()
   const theme = bandTheme(result.overall_band)
   const delta = previousBand == null ? null : result.overall_band - previousBand
 
   return (
     <div className="space-y-8">
+      {isSample && (
+        <p className="flex flex-wrap items-center gap-2 rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
+          <span className="rounded-full bg-amber-200 px-2 py-0.5 font-semibold text-amber-900">
+            {t('sample.badge')}
+          </span>
+          {t('sample.note')}
+        </p>
+      )}
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex flex-col items-center">
           <span className="text-xs uppercase tracking-wide text-slate-400">
