@@ -17,6 +17,10 @@ export const SAMPLE_METRICS = {
   fillerBreakdown: [{ phrase: 'you know', count: 2 }, { phrase: 'um', count: 1 }],
   repeatCount: 1,
   longPauses: 2,
+  longestPauseMs: 4100,
+  speechRatio: 0.82,
+  measuredPauses: true,
+  verbatim: true,
 }
 
 export const SAMPLE_RESULT = {
@@ -55,7 +59,32 @@ export const SAMPLE_RESULT = {
         en: 'Errors are frequent: dropped articles ("when i was child", "small cafe"), agreement failures ("this place have"), and a past-tense narrative told in the present ("my family go there"). Structures are mostly simple sentences.',
       },
     },
+    pronunciation: {
+      band: 6.5,
+      comment: {
+        kk: 'Сөйлеу түсінікті, тыңдаушыны шаршатпайды. Жеке дыбыстар негізінен дұрыс, бірақ сөз екпіні кейде ауысады және сөйлем соңы бірқалыпты — интонация арқылы мағына екпінін беру жетіспейді.',
+        en: 'You are comfortable to follow and the listener never has to work. Individual sounds are mostly accurate, but word stress slips on longer words and sentence endings stay flat, so intonation is not yet doing any work for you.',
+      },
+    },
   },
+  mispronounced: [
+    {
+      word: 'comfortable',
+      heard: 'com-for-TAY-bul',
+      note: {
+        kk: 'Екпін бірінші буында: КАМФ-тыр-бл — үш буын, ортасы жұтылады.',
+        en: 'Stress the first syllable and swallow the middle one: KUMF-ta-bl, three syllables not four.',
+      },
+    },
+    {
+      word: 'bicycle',
+      heard: 'bi-SIGH-kul',
+      note: {
+        kk: 'Екпін басында: БАЙ-си-кл. Ортаңғы буын қысқа.',
+        en: 'Stress falls on the first syllable: BY-si-kl, with a short middle vowel.',
+      },
+    },
+  ],
   strengths: [
     {
       kk: 'Тапсырманың барлық тармағын қамтып, әрқайсысын мысалмен нақтылағансыз.',

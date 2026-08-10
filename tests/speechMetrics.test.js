@@ -44,6 +44,43 @@ describe('computeSpeechMetrics', () => {
     assert.equal(metrics.longPauses, 2)
   })
 
+  it('marks recognizer-derived numbers as estimates', () => {
+    assert.equal(metrics.measuredPauses, false)
+    assert.equal(metrics.verbatim, false)
+    assert.equal(metrics.longestPauseMs, null, 'not knowable from chunk timing')
+  })
+
+  it('prefers waveform measurements over recognizer timing when both exist', () => {
+    // The recognizer's timing says two long pauses; the audio says one. The
+    // audio wins — it is the thing that actually happened.
+    const measured = computeSpeechMetrics({
+      text: 'i went to the park',
+      durationMs: 10000,
+      chunkTimestamps: [0, 1000, 5000, 9500, 9800],
+      silence: { longPauses: 1, longestPauseMs: 3400, speechRatio: 0.7 },
+    })
+
+    assert.equal(measured.longPauses, 1)
+    assert.equal(measured.longestPauseMs, 3400)
+    assert.equal(measured.speechRatio, 0.7)
+    assert.equal(measured.measuredPauses, true)
+  })
+
+  it('keeps the two provenance flags independent', () => {
+    // Chrome's case: pauses measured off the audio, but the words still come
+    // from a recognizer that deletes "um". Claiming one flag for both would
+    // tell the model the filler count is trustworthy when it is not.
+    const chrome = computeSpeechMetrics({
+      text: 'i went to the park',
+      durationMs: 10000,
+      silence: { longPauses: 1, longestPauseMs: 3400, speechRatio: 0.7 },
+      verbatim: false,
+    })
+
+    assert.equal(chrome.measuredPauses, true)
+    assert.equal(chrome.verbatim, false)
+  })
+
   it('returns null for an empty transcript instead of dividing by zero', () => {
     assert.equal(
       computeSpeechMetrics({ text: '   ', durationMs: 1000, chunkTimestamps: [] }),

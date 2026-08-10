@@ -2,37 +2,54 @@ import { defineConfig, loadEnv } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 
-// `api/analyze.js` is a Vercel serverless function. In production Vercel runs it
-// for us; in `npm run dev` this plugin mounts the same handler on the Vite dev
+// `api/*.js` are Vercel serverless functions. In production Vercel runs them for
+// us; in `npm run dev` this plugin mounts the same handlers on the Vite dev
 // server so both environments execute identical code.
+//
+// `analyze` takes json; `speech` takes raw wav bytes, because base64 in a json
+// body would cost a third of the 4.5 MB request budget for nothing.
+const ROUTES = [
+  { path: '/api/analyze', module: '/api/analyze.js', body: 'json' },
+  { path: '/api/interview', module: '/api/interview.js', body: 'json' },
+  { path: '/api/speech', module: '/api/speech.js', body: 'raw' },
+]
+
 function serverlessApi() {
   return {
     name: 'serverless-api-dev',
     configureServer(server) {
-      server.middlewares.use('/api/analyze', async (req, res) => {
-        res.status = (code) => {
-          res.statusCode = code
-          return res
-        }
-        res.json = (payload) => {
-          res.setHeader('content-type', 'application/json; charset=utf-8')
-          res.end(JSON.stringify(payload))
-          return res
-        }
+      for (const route of ROUTES) {
+        server.middlewares.use(route.path, async (req, res) => {
+          res.status = (code) => {
+            res.statusCode = code
+            return res
+          }
+          res.json = (payload) => {
+            res.setHeader('content-type', 'application/json; charset=utf-8')
+            res.end(JSON.stringify(payload))
+            return res
+          }
 
-        try {
-          const chunks = []
-          for await (const chunk of req) chunks.push(chunk)
-          const raw = Buffer.concat(chunks).toString('utf8')
-          req.body = raw ? JSON.parse(raw) : {}
+          try {
+            const chunks = []
+            for await (const chunk of req) chunks.push(chunk)
+            const raw = Buffer.concat(chunks)
 
-          const { default: handler } = await server.ssrLoadModule('/api/analyze.js')
-          await handler(req, res)
-        } catch (error) {
-          server.config.logger.error(`[api/analyze] ${error.stack || error.message}`)
-          if (!res.writableEnded) res.status(500).json({ error: error.message })
-        }
-      })
+            if (route.body === 'json') {
+              const text = raw.toString('utf8')
+              req.body = text ? JSON.parse(text) : {}
+            } else {
+              req.body = raw
+            }
+
+            const { default: handler } = await server.ssrLoadModule(route.module)
+            await handler(req, res)
+          } catch (error) {
+            server.config.logger.error(`[${route.path}] ${error.stack || error.message}`)
+            if (!res.writableEnded) res.status(500).json({ error: error.message })
+          }
+        })
+      }
     },
   }
 }
@@ -43,7 +60,11 @@ const SERVER_ENV_KEYS = [
   'DEEPSEEK_API_KEY',
   'DEEPSEEK_MODEL',
   'DEEPSEEK_REASONING_EFFORT',
+  'GEMINI_API_KEY',
+  'GEMINI_MODEL',
   'RATE_LIMIT_PER_HOUR',
+  'SPEECH_RATE_LIMIT_PER_HOUR',
+  'INTERVIEW_RATE_LIMIT_PER_HOUR',
 ]
 
 export default defineConfig(({ mode }) => {

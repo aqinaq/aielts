@@ -34,12 +34,22 @@ describe('sample analysis', () => {
     assert.equal(SAMPLE_RESULT.overall_band, Math.round(mean * 2) / 2)
   })
 
-  it('uses the speaking criterion set', () => {
+  it('uses the full speaking criterion set, pronunciation included', () => {
     assert.deepEqual(Object.keys(SAMPLE_RESULT.criteria).sort(), [
       'fluency_coherence',
       'grammatical_range',
       'lexical_resource',
+      'pronunciation',
       'task_response',
     ])
+  })
+
+  it('shows the pronunciation examples a real audio pass would return', () => {
+    assert.ok(SAMPLE_RESULT.mispronounced.length > 0)
+    for (const item of SAMPLE_RESULT.mispronounced) {
+      assert.ok(item.word && item.heard, 'both spellings are needed to show a contrast')
+      assert.notEqual(item.word, item.heard, 'a fix that changes nothing teaches nothing')
+      assert.ok(item.note.kk && item.note.en, 'feedback is bilingual everywhere else')
+    }
   })
 })

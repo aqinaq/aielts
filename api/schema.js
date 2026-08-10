@@ -25,7 +25,10 @@ export const MISTAKE_CATEGORIES = [
 ]
 
 const num = (hint) => ({ kind: 'number', hint })
-const str = (hint) => ({ kind: 'string', hint })
+// `allowEmpty` is for the one field that has a meaningful empty value: a
+// transcript of silence. Everywhere else a blank string means the model skipped
+// the field, and rejecting it buys a corrective retry.
+const str = (hint, { allowEmpty = false } = {}) => ({ kind: 'string', hint, allowEmpty })
 const enumOf = (values) => ({ kind: 'enum', values })
 const bilingual = (hint) => ({ kind: 'bilingual', hint })
 const arrayOf = (of, hint) => ({ kind: 'array', of, hint })
@@ -69,6 +72,65 @@ export function criteriaFields(mode, hasTask) {
   )
 
   return fields
+}
+
+/**
+ * What the audio pass returns. Separate from `analysisSchema` because a
+ * different provider produces it: DeepSeek has no audio model, so the recording
+ * goes to Gemini and only the pronunciation criterion comes back from there.
+ *
+ * The transcript is asked for verbatim, hesitations included, so that filler
+ * counting can run over real speech instead of over Chrome's tidied-up guess.
+ * Counting is done in code afterwards — models are unreliable at it and this one
+ * has no reason to be an exception.
+ */
+export function speechSchema() {
+  return object({
+    // Empty is a legitimate answer here — a recording of silence has no words
+    // in it, and the caller turns that into "no speech was audible" rather
+    // than grading an empty string.
+    transcript: str(
+      'exactly what was said, in English, including every "um", "uh", false start and repeated word, with normal punctuation; "" if no speech is audible',
+      { allowEmpty: true },
+    ),
+    pronunciation: criterion(
+      'pronunciation — individual sounds, word and sentence stress, intonation, and how much listener effort the accent demands',
+    ),
+    mispronounced: arrayOf(
+      object({
+        word: str('the word as it is normally pronounced, in English'),
+        heard: str('how the candidate actually said it, spelled out in plain letters'),
+        note: bilingual('what to change, in one sentence'),
+      }),
+      '0-6 items, clearest examples first; empty array if pronunciation is consistently intelligible',
+    ),
+  })
+}
+
+/**
+ * The examiner's next prompt during an interview.
+ *
+ * Two shapes, because Part 2 is not a question: it is a printed card with a
+ * topic and bullet points that the candidate speaks from uninterrupted. Asking
+ * for bullets on an ordinary question would invite the model to invent
+ * structure the real exam does not have.
+ */
+export function interviewSchema(kind) {
+  if (kind === 'cue_card') {
+    return object({
+      question: str(
+        'the cue card topic, phrased as the examiner reads it, starting "Describe ..."',
+      ),
+      bullets: arrayOf(
+        str('one "You should say" point, a short noun phrase'),
+        'exactly 4 items; the last one starts with "explain"',
+      ),
+    })
+  }
+
+  return object({
+    question: str('the examiner\'s next question, one sentence, in English'),
+  })
 }
 
 export function analysisSchema(mode, hasTask) {
@@ -128,6 +190,25 @@ function renderNode(node, indent) {
 /** The literal json skeleton shown to the model. */
 export const renderTemplate = (schema) => renderNode(schema, 0)
 
+/**
+ * Strips a ```json fence if the model wrapped its answer in one despite being
+ * asked not to. JSON mode usually prevents this, but it is one line of defence
+ * for a retry we would otherwise spend a request on.
+ */
+export function extractJson(content) {
+  const trimmed = (content ?? '').trim()
+  if (!trimmed) return null
+
+  const fenced = trimmed.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i)
+  const candidate = fenced ? fenced[1] : trimmed
+
+  try {
+    return JSON.parse(candidate)
+  } catch {
+    return null
+  }
+}
+
 // --- validation -------------------------------------------------------------
 
 const isPlainObject = (value) =>
@@ -144,7 +225,9 @@ function check(node, value, path, errors) {
       break
 
     case 'string':
-      if (!nonEmptyString(value)) errors.push(`${path}: expected a non-empty string`)
+      if (node.allowEmpty ? typeof value !== 'string' : !nonEmptyString(value)) {
+        errors.push(`${path}: expected a${node.allowEmpty ? '' : ' non-empty'} string`)
+      }
       break
 
     case 'enum':
@@ -198,9 +281,9 @@ export function validate(schema, value) {
  * them into range. The model is asked for halves but nothing enforces it, and a
  * band of 6.37 would render as "6.4" — a score that does not exist.
  */
-export function normalizeBands(analysis) {
-  const toBand = (value) => Math.min(9, Math.max(0, Math.round(value * 2) / 2))
+export const toBand = (value) => Math.min(9, Math.max(0, Math.round(value * 2) / 2))
 
+export function normalizeBands(analysis) {
   return {
     ...analysis,
     overall_band: toBand(analysis.overall_band),

@@ -7,6 +7,7 @@ import {
   Printer,
   TrendingDown,
   TrendingUp,
+  Volume2,
 } from 'lucide-react'
 
 import { useLanguage } from '../i18n'
@@ -23,6 +24,9 @@ const CRITERION_ORDER = [
   'coherence_cohesion',
   'lexical_resource',
   'grammatical_range',
+  // Last, matching the order the official speaking descriptors list. Only
+  // present when the recording reached the speech endpoint.
+  'pronunciation',
 ]
 
 const bandTheme = (band) => {
@@ -82,11 +86,13 @@ export default function AnalysisResult({
   text,
   mode,
   previousBand,
+  notes = [],
   isSample = false,
 }) {
   const { lang, t } = useLanguage()
   const theme = bandTheme(result.overall_band)
   const delta = previousBand == null ? null : result.overall_band - previousBand
+  const hasPronunciation = Boolean(result.criteria?.pronunciation)
 
   return (
     <div className="space-y-8">
@@ -171,10 +177,53 @@ export default function AnalysisResult({
         })}
       </div>
 
-      {mode === 'speaking' && (
+      {result.mispronounced?.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+            <Volume2 className="size-4 text-violet-500" aria-hidden="true" />
+            {t('result.mispronounced')}
+          </h3>
+          <ul className="space-y-2">
+            {result.mispronounced.map((item, index) => (
+              <li
+                key={`${item.word}-${index}`}
+                className="rounded-xl border border-slate-200 bg-white p-3"
+              >
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <span className="rounded bg-rose-50 px-2 py-0.5 text-rose-700">
+                    {item.heard}
+                  </span>
+                  <ArrowRight className="size-3.5 text-slate-400" aria-hidden="true" />
+                  <span className="rounded bg-emerald-50 px-2 py-0.5 font-medium text-emerald-700">
+                    {item.word}
+                  </span>
+                </div>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-600">
+                  {pick(item.note, lang)}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Caveats about the audio, and the reason pronunciation is missing when
+          it is — a criterion silently absent from a speaking result is worse
+          than one explained. A trim is worth saying even when everything
+          worked, because it changes what was assessed. */}
+      {notes.includes('audioTrimmed') && (
+        <p className="flex gap-1.5 text-xs leading-relaxed text-amber-700">
+          <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
+          {t('result.audioTrimmed')}
+        </p>
+      )}
+
+      {mode === 'speaking' && !hasPronunciation && (
         <p className="flex gap-1.5 text-xs leading-relaxed text-slate-400">
           <Info className="mt-0.5 size-3.5 shrink-0" aria-hidden="true" />
-          {t('result.pronunciationNote')}
+          {notes.includes('pronunciationFailed')
+            ? t('result.pronunciationFailed')
+            : t('result.pronunciationNote')}
         </p>
       )}
 

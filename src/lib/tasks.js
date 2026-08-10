@@ -36,6 +36,45 @@ export const TASK_BANK = {
       prompt:
         'Some argue that protecting the environment is the responsibility of governments rather than individuals. To what extent do you agree or disagree?',
     },
+    // Academic Task 1 comes with a chart to describe. `chartId` points into
+    // CHARTS; the figures behind it are sent to the grader so that misreporting
+    // a number can be marked as the Task Achievement failure it is.
+    {
+      id: 'w-chart-line',
+      type: 'IELTS Writing Task 1 (Academic)',
+      minutes: 20,
+      minWords: 150,
+      chartId: 'museum-visitors',
+      prompt:
+        'The line graph shows the number of visitors to three museums in London between 2015 and 2020. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    },
+    {
+      id: 'w-chart-bar',
+      type: 'IELTS Writing Task 1 (Academic)',
+      minutes: 20,
+      minWords: 150,
+      chartId: 'housework-hours',
+      prompt:
+        'The chart shows the average number of hours per week that men and women spent on unpaid housework in four countries in 2019. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    },
+    {
+      id: 'w-chart-pie',
+      type: 'IELTS Writing Task 1 (Academic)',
+      minutes: 20,
+      minWords: 150,
+      chartId: 'household-spending',
+      prompt:
+        'The pie charts compare how an average household spent its income in 1990 and in 2020. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    },
+    {
+      id: 'w-chart-table',
+      type: 'IELTS Writing Task 1 (Academic)',
+      minutes: 20,
+      minWords: 150,
+      chartId: 'internet-users',
+      prompt:
+        'The table shows the percentage of the population using the internet in five countries in 2000, 2010 and 2020. Summarise the information by selecting and reporting the main features, and make comparisons where relevant.',
+    },
     {
       id: 'w-letter',
       type: 'IELTS Writing Task 1 (General)',

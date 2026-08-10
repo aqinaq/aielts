@@ -1,9 +1,11 @@
-// Fluency signals computed in the browser from the recognition session.
+// Fluency signals computed in the browser.
 //
-// These are deliberately approximate. Chrome's recognizer cleans up most
-// "um"/"uh" hesitations before they ever reach us, and it finalizes a phrase a
-// beat after the speaker stops — so pause detection lags reality. The UI labels
-// them as estimates and the model is told the same.
+// There are two sources, and they differ in quality. Chrome's recognizer cleans
+// up most "um"/"uh" hesitations before they ever reach us and finalizes a phrase
+// a beat after the speaker stops, so anything derived from it is an estimate.
+// When the audio itself has been decoded, `silence` carries measurements taken
+// from the waveform and those win — see `audio.js`. `measured` records which
+// happened, so the UI and the prompt can both be honest about it.
 
 const HESITATIONS = ['um', 'uh', 'erm', 'er', 'ah', 'hmm', 'mmm']
 const DISCOURSE_FILLERS = ['you know', 'i mean', 'sort of', 'kind of', 'you see']
@@ -16,7 +18,13 @@ const countPhrase = (text, phrase) => {
   return matches ? matches.length : 0
 }
 
-export function computeSpeechMetrics({ text, durationMs, chunkTimestamps }) {
+export function computeSpeechMetrics({
+  text,
+  durationMs,
+  chunkTimestamps = [],
+  silence = null,
+  verbatim = false,
+}) {
   const trimmed = text.trim()
   if (!trimmed) return null
 
@@ -36,9 +44,9 @@ export function computeSpeechMetrics({ text, durationMs, chunkTimestamps }) {
   // Immediate word repeats: "the the", "I I think".
   const repeats = trimmed.match(/\b(\w+)\s+\1\b/gi)
 
-  let longPauses = 0
+  let estimatedPauses = 0
   for (let i = 1; i < chunkTimestamps.length; i += 1) {
-    if (chunkTimestamps[i] - chunkTimestamps[i - 1] > LONG_PAUSE_MS) longPauses += 1
+    if (chunkTimestamps[i] - chunkTimestamps[i - 1] > LONG_PAUSE_MS) estimatedPauses += 1
   }
 
   return {
@@ -48,7 +56,15 @@ export function computeSpeechMetrics({ text, durationMs, chunkTimestamps }) {
     fillerCount,
     fillerBreakdown: breakdown,
     repeatCount: repeats ? repeats.length : 0,
-    longPauses,
+    longPauses: silence ? silence.longPauses : estimatedPauses,
+    longestPauseMs: silence ? silence.longestPauseMs : null,
+    speechRatio: silence ? silence.speechRatio : null,
+    // Provenance, tracked separately because the two halves can disagree: on
+    // Chrome the pauses come from the waveform while the words still come from
+    // a recognizer that quietly deletes hesitations. The prompt hedges each on
+    // its own, and claiming one flag for both would overstate the fillers.
+    measuredPauses: Boolean(silence),
+    verbatim,
   }
 }
 

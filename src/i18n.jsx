@@ -24,6 +24,39 @@ const translations = {
     mode: {
       speak: 'Сөйлеу',
       write: 'Жазу',
+      interview: 'Сұхбат',
+    },
+
+    interview: {
+      introTitle: 'IELTS Speaking сұхбаты',
+      introBody:
+        'Емтихан алушы сіздің жауабыңызға қарай келесі сұрағын құрастырады — дайын тізім емес. Толық емтиханды да, бір бөлімді де өтуге болады.',
+      scope: {
+        full: 'Толық емтихан',
+        part1: '1-бөлім — таныс тақырыптар',
+        part2: '2-бөлім — карточка бойынша монолог',
+        part3: '3-бөлім — талқылау',
+      },
+      scopeHint: {
+        full: 'Үш бөлім қатарынан, шамамен 12 минут.',
+        part1: 'Өзіңіз туралы қысқа сұрақтар: тұрғылықты жер, оқу, бос уақыт.',
+        part2: 'Бір минут дайындық, содан кейін 1–2 минут үзіліссіз сөйлеу.',
+        part3: 'Абстракт сұрақтар: себеп, салдар, салыстыру, болжам.',
+      },
+      turnCount: '{{n}} кезек',
+      start: 'Емтиханды бастау',
+      needsMic: 'Микрофон қажет. Браузер параметрлерінен рұқсат беріңіз.',
+      part: '{{n}}-бөлім',
+      thinking: 'Емтихан алушы келесі сұрақты дайындап жатыр…',
+      prepLabel: 'Дайындалу уақыты',
+      youShouldSay: 'Мыналарды айтуыңыз керек',
+      suggested: 'шамамен {{n}} секунд',
+      nextQuestion: 'Келесі сұрақ',
+      lastAnswer: 'Соңғы жауапты аяқтау',
+      finishEarly: 'Мерзімінен бұрын аяқтау',
+      grade: 'Сұхбатты бағалау',
+      restart: 'Қайтадан бастау',
+      noAnswer: '(жауап жазылмады)',
     },
 
     task: {
@@ -108,6 +141,13 @@ const translations = {
       note: 'Көрсеткіштер шамамен. Chrome «um», «uh» сияқты дыбыстарды көбіне мәтінге қоспайды, ал кідірістер тану кідірісіне байланысты дәл емес.',
     },
 
+    upload: {
+      button: 'Аудио файл жүктеу',
+      remove: 'Файлды алып тастау',
+      hint: 'mp3, m4a, wav, ogg. Ұзақ файлдың алғашқы {{n}} минуты тыңдалады.',
+      tooLarge: 'Файл тым үлкен ({{n}} дейін).',
+    },
+
     result: {
       loading: 'AI мәтіңізді талдап жатыр…',
       loadingHint: 'Әдетте 20–40 секунд алады',
@@ -122,8 +162,14 @@ const translations = {
       nextStep: 'Келесі қадам',
       firstAttempt: 'Бірінші талпыныс',
       comparedTo: 'алдыңғы талпыныспен салыстырғанда',
+      interviewTitle: 'Сұхбат бойынша баға',
+      mispronounced: 'Айтылуын түзетуге тұрарлық сөздер',
       pronunciationNote:
-        'Айтылым бағаланбайды — құрал тек мәтінді талдайды, дыбысты емес.',
+        'Айтылым бағаланбады — бұл талпыныста дыбыс жазбасы болмаған.',
+      audioTrimmed:
+        'Жазба ұзын болғандықтан алғашқы бөлігі ғана тыңдалды — баға сол үзінді бойынша қойылды.',
+      pronunciationFailed:
+        'Айтылымды бағалау сәтсіз аяқталды. Қалған критерийлер мәтін бойынша бағаланды.',
     },
 
     criteria: {
@@ -133,6 +179,7 @@ const translations = {
       fluency_coherence: 'Еркін сөйлеу мен байланыстылық',
       lexical_resource: 'Лексикалық қор',
       grammatical_range: 'Грамматика мен дәлдік',
+      pronunciation: 'Айтылым',
     },
 
     patterns: {
@@ -179,6 +226,10 @@ const translations = {
       startFailed: 'Жазуды бастау мүмкін болмады. Бір секундтан кейін қайталаңыз.',
       unknown: 'Дауыс тану қатесі.',
       requestFailed: 'Талдау сәтсіз аяқталды.',
+      noInput: 'Талдайтын ештеңе жоқ. Сөйлеңіз немесе мәтін енгізіңіз.',
+      noSpeechHeard: 'Жазбадан сөз естілмеді. Микрофонды тексеріп, қайталаңыз.',
+      audioUnreadable:
+        'Бұл аудио файлды ашу мүмкін болмады. Басқа пішімде (mp3, m4a, wav) жүктеп көріңіз.',
     },
   },
 
@@ -200,6 +251,39 @@ const translations = {
     mode: {
       speak: 'Speaking',
       write: 'Writing',
+      interview: 'Interview',
+    },
+
+    interview: {
+      introTitle: 'IELTS Speaking interview',
+      introBody:
+        'The examiner writes each question from what you just said rather than reading a fixed list. Sit the whole test, or practise one part on its own.',
+      scope: {
+        full: 'Full test',
+        part1: 'Part 1 — familiar topics',
+        part2: 'Part 2 — the long turn',
+        part3: 'Part 3 — discussion',
+      },
+      scopeHint: {
+        full: 'All three parts back to back, about 12 minutes.',
+        part1: 'Short questions about you: where you live, study, free time.',
+        part2: 'One minute to prepare, then speak for 1–2 minutes uninterrupted.',
+        part3: 'Abstract questions: causes, consequences, comparisons, predictions.',
+      },
+      turnCount: '{{n}} turns',
+      start: 'Start the test',
+      needsMic: 'A microphone is required. Allow access in your browser settings.',
+      part: 'Part {{n}}',
+      thinking: 'The examiner is preparing the next question…',
+      prepLabel: 'Preparation time',
+      youShouldSay: 'You should say',
+      suggested: 'about {{n}} seconds',
+      nextQuestion: 'Next question',
+      lastAnswer: 'Finish the last answer',
+      finishEarly: 'End early',
+      grade: 'Mark the interview',
+      restart: 'Start over',
+      noAnswer: '(no answer recorded)',
     },
 
     task: {
@@ -284,6 +368,13 @@ const translations = {
       note: 'These are estimates. Chrome usually strips "um" and "uh" before the text reaches us, and pause detection lags because phrases are finalized after you stop speaking.',
     },
 
+    upload: {
+      button: 'Upload an audio file',
+      remove: 'Remove the file',
+      hint: 'mp3, m4a, wav, ogg. For a long file, the first {{n}} minutes are heard.',
+      tooLarge: 'That file is too large (up to {{n}}).',
+    },
+
     result: {
       loading: 'The AI is reading your text…',
       loadingHint: 'Usually takes 20–40 seconds',
@@ -298,8 +389,14 @@ const translations = {
       nextStep: 'Next step',
       firstAttempt: 'First attempt',
       comparedTo: 'compared with your previous attempt',
+      interviewTitle: 'Interview result',
+      mispronounced: 'Words worth re-practising',
       pronunciationNote:
-        'Pronunciation is not assessed — this tool reads the transcript, not the audio.',
+        'Pronunciation was not assessed — this attempt has no recording behind it.',
+      audioTrimmed:
+        'The recording was long, so only its first stretch was heard — the marks describe that part of it.',
+      pronunciationFailed:
+        'Pronunciation assessment failed. The other criteria were marked from the transcript.',
     },
 
     criteria: {
@@ -309,6 +406,7 @@ const translations = {
       fluency_coherence: 'Fluency and coherence',
       lexical_resource: 'Lexical resource',
       grammatical_range: 'Grammatical range and accuracy',
+      pronunciation: 'Pronunciation',
     },
 
     patterns: {
@@ -355,6 +453,10 @@ const translations = {
       startFailed: 'Could not start recording. Try again in a second.',
       unknown: 'Speech recognition error.',
       requestFailed: 'Analysis failed.',
+      noInput: 'There is nothing to analyze yet. Speak or type something first.',
+      noSpeechHeard: 'No speech was audible in the recording. Check your microphone and try again.',
+      audioUnreadable:
+        'This audio file could not be opened. Try another format — mp3, m4a or wav.',
     },
   },
 }

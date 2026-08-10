@@ -1,11 +1,21 @@
 -- AIELTS — Supabase schema.
 -- Run this once in the Supabase dashboard: SQL Editor -> New query -> Run.
+--
+-- Upgrading a database created before interview mode existed? `create table if
+-- not exists` will not widen the old constraint, so run this one line first:
+--
+--   alter table public.attempts drop constraint attempts_mode_check;
+--   alter table public.attempts add constraint attempts_mode_check
+--     check (mode in ('speak', 'write', 'interview'));
+--
+-- Without it, interviews fail to save for signed-in users while guests, who
+-- store attempts in the browser, carry on working — a confusing split.
 
 create table if not exists public.attempts (
   id            uuid primary key default gen_random_uuid(),
   user_id       uuid not null references auth.users (id) on delete cascade,
   created_at    timestamptz not null default now(),
-  mode          text not null check (mode in ('speak', 'write')),
+  mode          text not null check (mode in ('speak', 'write', 'interview')),
   band          numeric(2, 1) not null check (band >= 0 and band <= 9),
   level         text,
   task          text,

@@ -37,6 +37,7 @@ before(async () => {
     'components/AnalysisResult',
     'components/HistoryPanel',
     'components/Header',
+    'components/Interview',
     'components/MistakePatterns',
     'components/ProgressChart',
   ]) {
@@ -101,8 +102,60 @@ describe('AnalysisResult', () => {
     assert.ok(html.includes('CEFR B2'))
     assert.ok(html.includes('<mark'), 'corrections are highlighted inline')
     assert.ok(html.includes('+0.5'), 'improvement over the last attempt')
-    assert.ok(html.includes('Айтылым бағаланбайды'), 'pronunciation caveat in speaking')
+    assert.ok(
+      html.includes('Айтылым бағаланбады'),
+      'a speaking result with no pronunciation criterion says why',
+    )
     assert.ok(!html.includes('criteria.'), 'no untranslated keys')
+  })
+
+  it('renders the pronunciation criterion and drops the caveat when audio was marked', () => {
+    const html = render(
+      h(components.AnalysisResult, {
+        result: {
+          ...result,
+          criteria: { ...result.criteria, pronunciation: criterion(6) },
+          mispronounced: [
+            { word: 'comfortable', heard: 'com-for-table', note: { kk: 'Екпін', en: 'Stress' } },
+          ],
+        },
+        text,
+        mode: 'speaking',
+        previousBand: null,
+      }),
+    )
+    assert.ok(html.includes('Айтылым'), 'the criterion is labelled')
+    assert.ok(!html.includes('Айтылым бағаланбады'), 'no caveat once it is assessed')
+    assert.ok(html.includes('com-for-table'), 'mispronounced words are listed')
+  })
+
+  it('explains a failed pronunciation pass rather than silently omitting it', () => {
+    const html = render(
+      h(components.AnalysisResult, {
+        result,
+        text,
+        mode: 'speaking',
+        previousBand: null,
+        notes: ['pronunciationFailed'],
+      }),
+    )
+    assert.ok(html.includes('сәтсіз аяқталды'), 'the reason reaches the user')
+  })
+
+  it('says when only part of a long recording was heard', () => {
+    // A trim changes what was assessed, so it is worth saying even when the
+    // pronunciation criterion came back perfectly fine.
+    const html = render(
+      h(components.AnalysisResult, {
+        result: { ...result, criteria: { ...result.criteria, pronunciation: criterion(6) } },
+        text,
+        mode: 'speaking',
+        previousBand: null,
+        notes: ['audioTrimmed'],
+      }),
+    )
+    assert.ok(html.includes('алғашқы бөлігі ғана тыңдалды'))
+    assert.ok(!html.includes('Айтылым бағаланбады'), 'the criterion was still marked')
   })
 
   it('uses the writing criterion set and drops the speaking caveat', () => {
@@ -124,7 +177,7 @@ describe('AnalysisResult', () => {
     )
     assert.ok(html.includes('Тапсырманы орындау'))
     assert.ok(html.includes('Байланыстылық пен құрылым'))
-    assert.ok(!html.includes('Айтылым бағаланбайды'))
+    assert.ok(!html.includes('Айтылым бағаланбады'))
     assert.ok(html.includes('Бірінші талпыныс'))
   })
 
@@ -235,5 +288,140 @@ describe('Header', () => {
     assert.ok(html.includes('Test User'))
     assert.ok(html.includes('https://x/y.png'))
     assert.ok(!html.includes('Google арқылы кіру'))
+  })
+})
+
+describe('Interview', () => {
+  const base = {
+    turns: [],
+    error: null,
+    isSupported: true,
+    isListening: false,
+    elapsedMs: 0,
+    transcript: '',
+    interim: '',
+    onStart() {},
+    onToggleRecord() {},
+    onTranscriptChange() {},
+    onSubmit() {},
+    onRetry() {},
+    onFinishEarly() {},
+  }
+
+  it('offers each part as its own practice unit before starting', () => {
+    const html = render(
+      h(components.Interview, { ...base, status: 'idle', current: null }),
+    )
+    assert.ok(html.includes('Толық емтихан'))
+    assert.ok(html.includes('2-бөлім — карточка бойынша монолог'))
+    assert.ok(html.includes('11 кезек'), 'the full test states its length')
+    assert.ok(html.includes('2 кезек'), 'and so does a single part')
+    assert.ok(!html.includes('interview.'), 'no untranslated keys')
+  })
+
+  it('renders a cue card with its bullets, not as a plain question', () => {
+    const html = render(
+      h(components.Interview, {
+        ...base,
+        status: 'answering',
+        current: {
+          part: 2,
+          kind: 'cue_card',
+          index: 4,
+          prepSeconds: 60,
+          maxSeconds: 120,
+          question: 'Describe a park you like to visit.',
+          bullets: ['where it is', 'how often you go', 'what you do', 'explain why'],
+        },
+      }),
+    )
+    assert.ok(html.includes('Describe a park you like to visit.'))
+    assert.ok(html.includes('Мыналарды айтуыңыз керек'))
+    assert.ok(html.includes('explain why'))
+    assert.ok(html.includes('2-бөлім'), 'the part is labelled')
+    assert.ok(html.includes('Дайындалу уақыты'), 'Part 2 gets its preparation minute')
+  })
+
+  it('gives an ordinary question no preparation time', () => {
+    const html = render(
+      h(components.Interview, {
+        ...base,
+        status: 'answering',
+        current: {
+          part: 1, kind: 'question', index: 0, prepSeconds: 0, maxSeconds: 60,
+          question: 'Where do you live?',
+        },
+      }),
+    )
+    assert.ok(html.includes('Where do you live?'))
+    assert.ok(!html.includes('Дайындалу уақыты'))
+  })
+
+  it('lists the turns already taken, marking any left unanswered', () => {
+    const html = render(
+      h(components.Interview, {
+        ...base,
+        status: 'answering',
+        current: {
+          part: 1, kind: 'question', index: 1, prepSeconds: 0, maxSeconds: 60,
+          question: 'Do you like it?',
+        },
+        turns: [
+          { part: 1, kind: 'question', question: 'Where do you live?', answer: 'in astana' },
+          { part: 1, kind: 'question', question: 'And before that?', answer: '   ' },
+        ],
+      }),
+    )
+    assert.ok(html.includes('in astana'))
+    assert.ok(html.includes('(жауап жазылмады)'))
+  })
+
+  it('surfaces a failed question with a way to retry', () => {
+    const html = render(
+      h(components.Interview, {
+        ...base,
+        status: 'answering',
+        current: null,
+        error: 'Сағаттық шек асты.',
+      }),
+    )
+    assert.ok(html.includes('Сағаттық шек асты.'))
+    assert.ok(html.includes('Қайталап көру'))
+  })
+})
+
+describe('Interview progress', () => {
+  const base = {
+    turns: [], error: null, isSupported: true, isListening: false, elapsedMs: 0,
+    transcript: '', interim: '',
+    onStart() {}, onToggleRecord() {}, onTranscriptChange() {},
+    onSubmit() {}, onRetry() {}, onFinishEarly() {},
+  }
+
+  it('announces Part 1 while the opening question is still being written', () => {
+    // `current` is null during the request; reading the part off the previous
+    // turn instead reported Part 3 before Part 1 had been asked.
+    const html = render(
+      h(components.Interview, { ...base, status: 'asking', current: null }),
+    )
+    assert.ok(html.includes('1-бөлім'))
+    assert.ok(html.includes('1 / 11'))
+    assert.ok(!html.includes('3-бөлім'))
+    assert.ok(!html.includes('0 / 11'))
+  })
+
+  it('counts the turn on screen, not the ones already filed', () => {
+    const html = render(
+      h(components.Interview, {
+        ...base,
+        status: 'answering',
+        turns: [{ part: 1, kind: 'question', question: 'q', answer: 'a' }],
+        current: {
+          part: 1, kind: 'question', index: 1, prepSeconds: 0, maxSeconds: 60,
+          question: 'Do you like it?',
+        },
+      }),
+    )
+    assert.ok(html.includes('2 / 11'))
   })
 })

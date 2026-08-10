@@ -1,8 +1,38 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { buildSystemPrompt, buildUserPrompt, extractJson } from '../api/analyze.js'
-import { analysisSchema } from '../api/schema.js'
+import { buildSystemPrompt, buildUserPrompt, resolveProvider } from '../api/analyze.js'
+import { analysisSchema, extractJson } from '../api/schema.js'
+
+describe('resolveProvider', () => {
+  it('prefers DeepSeek, which the grading prompt was tuned against', () => {
+    const provider = resolveProvider({ DEEPSEEK_API_KEY: 'sk-x', GEMINI_API_KEY: 'AQ.y' })
+    assert.equal(provider.name, 'DeepSeek')
+    assert.equal(provider.apiKey, 'sk-x')
+  })
+
+  it('falls back to Gemini so one free key runs the whole app', () => {
+    const provider = resolveProvider({ GEMINI_API_KEY: 'AQ.y' })
+    assert.equal(provider.name, 'Gemini')
+    assert.match(provider.baseURL, /generativelanguage/)
+  })
+
+  it('returns null when nothing is configured, rather than a broken client', () => {
+    assert.equal(resolveProvider({}), null)
+  })
+
+  it('keeps reasoning_effort off Gemini, which rejects unknown parameters', () => {
+    assert.deepEqual(resolveProvider({ GEMINI_API_KEY: 'AQ.y' }).options(), {})
+    assert.ok('reasoning_effort' in resolveProvider({ DEEPSEEK_API_KEY: 'sk-x' }).options())
+  })
+
+  it('reads a bad credential from the status each provider actually uses', () => {
+    // Gemini answers an invalid key with 400; DeepSeek uses 400 for a malformed
+    // request, so treating it as an auth failure there would mislead.
+    assert.ok(resolveProvider({ GEMINI_API_KEY: 'AQ.y' }).badKeyStatuses.includes(400))
+    assert.ok(!resolveProvider({ DEEPSEEK_API_KEY: 'sk-x' }).badKeyStatuses.includes(400))
+  })
+})
 
 describe('extractJson', () => {
   it('parses a bare json object', () => {
@@ -76,6 +106,40 @@ describe('buildSystemPrompt', () => {
         buildSystemPrompt({ mode: 'speaking', hasTask: false, schema }),
       ),
     )
+  })
+
+  it('hedges measured and estimated metrics differently', () => {
+    const estimated = buildSystemPrompt({
+      mode: 'speaking',
+      hasTask: false,
+      schema,
+      metrics: { wordsPerMinute: 120, measuredPauses: false, verbatim: false },
+    })
+    assert.match(estimated, /estimated from when the recognizer finalized/)
+    assert.match(estimated, /strips "um" and "uh"/)
+
+    const measured = buildSystemPrompt({
+      mode: 'speaking',
+      hasTask: false,
+      schema,
+      metrics: { wordsPerMinute: 120, measuredPauses: true, verbatim: true },
+    })
+    assert.match(measured, /measured directly from the audio/)
+    assert.match(measured, /verbatim record/)
+    assert.ok(!/strips "um" and "uh"/.test(measured))
+  })
+
+  it('does not claim verbatim fillers just because the pauses were measured', () => {
+    // Chrome hits this combination on every attempt: real waveform pauses, but
+    // a transcript the recognizer already stripped hesitations out of.
+    const mixed = buildSystemPrompt({
+      mode: 'speaking',
+      hasTask: false,
+      schema,
+      metrics: { wordsPerMinute: 120, measuredPauses: true, verbatim: false },
+    })
+    assert.match(mixed, /measured directly from the audio/)
+    assert.match(mixed, /the true hesitation count is higher/)
   })
 
   it('marks the candidate material as data, not instructions', () => {
