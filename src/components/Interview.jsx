@@ -85,9 +85,12 @@ export default function Interview({
   current,
   turns,
   error,
+  turnError,
+  recorderError,
   scope = DEFAULT_SCOPE,
   isSupported,
   isListening,
+  isSubmitting,
   elapsedMs,
   transcript,
   interim,
@@ -199,10 +202,11 @@ export default function Interview({
           {position.turn} / {position.total}
         </span>
 
-        {status !== 'finished' && (
+        {status !== 'finished' && turns.length > 0 && (
           <button
             type="button"
             onClick={onFinishEarly}
+            disabled={isSubmitting}
             className="ml-auto rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-rose-300 hover:text-rose-700"
           >
             {t('interview.finishEarly')}
@@ -238,6 +242,20 @@ export default function Interview({
             {t('actions.retry')}
           </button>
         </div>
+      )}
+
+      {recorderError && (
+        <p className="flex gap-2 rounded-xl bg-rose-50 p-4 text-sm text-rose-700">
+          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          {t(`errors.${recorderError}`)}
+        </p>
+      )}
+
+      {turnError && (
+        <p className="flex gap-2 rounded-xl bg-rose-50 p-4 text-sm text-rose-700">
+          <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          {turnError}
+        </p>
       )}
 
       {current && (
@@ -279,7 +297,7 @@ export default function Interview({
             />
           ) : (
             <>
-              <RecordButton isListening={isListening} onToggle={onToggleRecord} />
+              <RecordButton isListening={isListening} disabled={isSubmitting} onToggle={onToggleRecord} />
 
               <p className="text-center text-xs text-slate-400">
                 <span className="font-mono tabular-nums text-slate-500">
@@ -304,7 +322,7 @@ export default function Interview({
             onClick={onSubmit}
             // Also blocked while a question is in flight: a second submit would
             // file the same answer twice and skip a turn.
-            disabled={isListening || status === 'asking'}
+            disabled={isListening || isSubmitting || status !== 'answering'}
             className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 font-medium text-white shadow-sm transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:bg-slate-300"
           >
             {position.turn === position.total

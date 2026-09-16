@@ -62,6 +62,8 @@ const translations = {
     task: {
       label: 'Тапсырма және шарттары',
       optional: 'міндетті емес',
+      required: 'міндетті',
+      requiredHint: 'IELTS Writing бағасы үшін нақты тапсырманы жазыңыз немесе банктен таңдаңыз.',
       placeholder:
         'Тапсырманы осында жазыңыз немесе дайын тапсырмалардан таңдаңыз. Мысалы: «...Discuss both views. Кемінде 250 сөз, 40 минут.»',
       hint: 'Тапсырманы жазсаңыз, AI мәтіннің шартқа сай келуін де бағалайды.',
@@ -88,12 +90,14 @@ const translations = {
       stopLabel: 'Жазуды тоқтату',
       notSupported:
         'Бұл браузер дауыс тануды қолдамайды. Chrome немесе Edge-ті пайдаланыңыз, не «Жазу» режиміне ауысыңыз.',
+      liveUnavailable: 'Тікелей мәтін шықпайды — жазбаны талдағанда AI оны мәтінге айналдырады.',
+      recordUnavailable: 'Бұл браузерде микрофонға жазу қолжетімсіз. Аудио файл жүктеңіз немесе мәтін енгізіңіз.',
       languageNote: 'Дауыс тану ағылшын тілінде жұмыс істейді.',
     },
 
     audio: {
       label: 'Жазбаңызды тыңдаңыз',
-      note: 'Жазба тек осы бетте сақталады — бетті жаңартсаңыз жоғалады, ешқайда жіберілмейді.',
+      note: 'Жазба талдау кезінде AI-ға жіберіледі, бірақ сақталмайды; бетті жаңартсаңыз жоғалады.',
     },
 
     sample: {
@@ -127,6 +131,7 @@ const translations = {
     counter: {
       words: 'сөз',
       minWords: 'талдау үшін кемінде {{n}} сөз керек',
+      taskNeeded: 'Writing бағасы үшін тапсырма қажет',
     },
 
     metrics: {
@@ -153,7 +158,10 @@ const translations = {
       loadingHint: 'Әдетте 20–40 секунд алады',
       emptyState: 'Сөйлеңіз немесе мәтін енгізіңіз — нәтиже осы жерде шығады.',
       errorTitle: 'Талдау сәтсіз аяқталды',
-      band: 'Band',
+      band: 'AI band бағасы',
+      partialBand: 'Толық band жоқ',
+      partialNote: 'Жалпы IELTS Speaking band үшін айтылымды дыбыстан бағалау қажет. Мәтін бойынша кері байланыс төменде көрсетілген; бұл талпыныс балл тарихына қосылмайды.',
+      taskFeedback: 'Тапсырмаға сәйкестік',
       overall: 'Жалпы балл',
       strengths: 'Жақсы тұстары',
       improvements: 'Не жақсартуға болады',
@@ -224,6 +232,7 @@ const translations = {
       network: 'Желі қатесі. Интернет байланысын тексеріңіз.',
       languageNotSupported: 'Бұл браузер ағылшын тілін тануды қолдамайды.',
       startFailed: 'Жазуды бастау мүмкін болмады. Бір секундтан кейін қайталаңыз.',
+      recorderFailed: 'Микрофонға жазу басталмады. Рұқсатты тексеріп, қайталаңыз.',
       unknown: 'Дауыс тану қатесі.',
       requestFailed: 'Талдау сәтсіз аяқталды.',
       noInput: 'Талдайтын ештеңе жоқ. Сөйлеңіз немесе мәтін енгізіңіз.',
@@ -289,6 +298,8 @@ const translations = {
     task: {
       label: 'Task and requirements',
       optional: 'optional',
+      required: 'required',
+      requiredHint: 'Enter the actual writing task or choose one from the bank to receive an IELTS Writing band.',
       placeholder:
         'Type the task here, or pick one from the bank. For example: "...Discuss both views. At least 250 words, 40 minutes."',
       hint: 'Add the task and the AI will also grade how well your answer meets it.',
@@ -315,12 +326,14 @@ const translations = {
       stopLabel: 'Stop recording',
       notSupported:
         'This browser does not support speech recognition. Use Chrome or Edge, or switch to Writing mode.',
+      liveUnavailable: 'No live transcript here — AI will transcribe the recording when you analyze it.',
+      recordUnavailable: 'Microphone recording is unavailable in this browser. Upload audio or enter text instead.',
       languageNote: 'Speech recognition runs in English.',
     },
 
     audio: {
       label: 'Listen back',
-      note: 'The recording stays on this page only — it is never uploaded, and it is gone on reload.',
+      note: 'The recording is sent to AI for analysis but is not saved; it is gone on reload.',
     },
 
     sample: {
@@ -354,6 +367,7 @@ const translations = {
     counter: {
       words: 'words',
       minWords: 'at least {{n}} words needed to analyze',
+      taskNeeded: 'a task prompt is needed for a Writing band',
     },
 
     metrics: {
@@ -380,7 +394,10 @@ const translations = {
       loadingHint: 'Usually takes 20–40 seconds',
       emptyState: 'Speak or type something — your feedback will appear here.',
       errorTitle: 'Analysis failed',
-      band: 'Band',
+      band: 'Estimated AI band',
+      partialBand: 'No overall band',
+      partialNote: 'An overall IELTS Speaking band needs pronunciation assessed from audio. The text feedback appears below; this attempt is not added to scored history.',
+      taskFeedback: 'Response to the prompt',
       overall: 'Overall',
       strengths: 'What worked well',
       improvements: 'What to improve',
@@ -451,6 +468,7 @@ const translations = {
       network: 'Network error. Check your internet connection.',
       languageNotSupported: 'This browser cannot recognize English speech.',
       startFailed: 'Could not start recording. Try again in a second.',
+      recorderFailed: 'Could not record from the microphone. Check permission and try again.',
       unknown: 'Speech recognition error.',
       requestFailed: 'Analysis failed.',
       noInput: 'There is nothing to analyze yet. Speak or type something first.',

@@ -6,6 +6,7 @@ import {
   analysisSchema,
   criteriaFields,
   normalizeBands,
+  officialBand,
   renderTemplate,
   validate,
 } from '../api/schema.js'
@@ -18,11 +19,11 @@ const validAnalysis = (overrides = {}) => ({
   level: 'B2',
   summary: bi(),
   criteria: {
-    task_response: criterion(7),
     fluency_coherence: criterion(6.5),
     lexical_resource: criterion(6),
     grammatical_range: criterion(6),
   },
+  task_feedback: bi('On topic.'),
   strengths: [bi()],
   improvements: [bi()],
   corrections: [
@@ -39,10 +40,11 @@ describe('criteriaFields', () => {
     assert.ok(!('coherence_cohesion' in criteriaFields('speaking', false)))
   })
 
-  it('only includes a task criterion when a task was supplied', () => {
-    assert.ok(!('task_response' in criteriaFields('speaking', false)))
-    assert.ok('task_response' in criteriaFields('speaking', true))
-    assert.ok('task_achievement' in criteriaFields('writing', true))
+  it('keeps prompt relevance separate from the official Speaking criteria', () => {
+    assert.ok(!('task_response' in criteriaFields('speaking')))
+    assert.ok('task_feedback' in analysisSchema('speaking', true).fields)
+    assert.ok(!('task_feedback' in analysisSchema('speaking', false).fields))
+    assert.ok('task_achievement' in criteriaFields('writing'))
   })
 })
 
@@ -54,7 +56,7 @@ describe('validate', () => {
 
   it('reports a missing top-level key', () => {
     const schema = analysisSchema('speaking', true)
-    const { next_step, ...withoutNextStep } = validAnalysis()
+    const { next_step: _nextStep, ...withoutNextStep } = validAnalysis()
     const errors = validate(schema, withoutNextStep)
     assert.equal(errors.length, 1)
     assert.match(errors[0], /next_step.*missing/)
@@ -123,7 +125,7 @@ describe('renderTemplate', () => {
       'improvements',
       'corrections',
       'next_step',
-      'task_response',
+      'task_feedback',
       'fluency_coherence',
       'category',
     ]) {
@@ -149,27 +151,34 @@ describe('normalizeBands', () => {
       validAnalysis({
         overall_band: 6.37,
         criteria: {
-          task_response: criterion(6.8),
           fluency_coherence: criterion(6.2),
           lexical_resource: criterion(5.9),
           grammatical_range: criterion(6),
+          pronunciation: criterion(6.8),
         },
       }),
+      'speaking',
     )
     assert.equal(normalized.overall_band, 6.5)
-    assert.equal(normalized.criteria.task_response.band, 7)
     assert.equal(normalized.criteria.fluency_coherence.band, 6)
     assert.equal(normalized.criteria.lexical_resource.band, 6)
+    assert.equal(normalized.criteria.pronunciation.band, 7)
   })
 
   it('clamps out-of-range bands rather than rendering an impossible score', () => {
     const normalized = normalizeBands(
       validAnalysis({
         overall_band: 11,
-        criteria: { grammatical_range: criterion(-2) },
+        criteria: {
+          task_achievement: criterion(11),
+          coherence_cohesion: criterion(11),
+          lexical_resource: criterion(11),
+          grammatical_range: criterion(-2),
+        },
       }),
+      'writing',
     )
-    assert.equal(normalized.overall_band, 9)
+    assert.equal(normalized.overall_band, 7)
     assert.equal(normalized.criteria.grammatical_range.band, 0)
   })
 
@@ -178,5 +187,25 @@ describe('normalizeBands', () => {
     const normalized = normalizeBands(analysis)
     assert.deepEqual(normalized.corrections, analysis.corrections)
     assert.deepEqual(normalized.summary, analysis.summary)
+  })
+
+  it('withholds an overall Speaking band until pronunciation exists', () => {
+    const normalized = normalizeBands(validAnalysis(), 'speaking')
+    assert.equal(normalized.overall_band, null)
+    assert.equal(officialBand(normalized.criteria, 'speaking'), null)
+  })
+
+  it('ignores a legacy fifth Speaking criterion when recalculating a stored band', () => {
+    const normalized = normalizeBands(validAnalysis({
+      criteria: {
+        ...validAnalysis().criteria,
+        pronunciation: criterion(6),
+        task_response: criterion(9),
+      },
+      task_feedback: undefined,
+    }), 'speaking')
+    assert.equal(normalized.overall_band, 6)
+    assert.ok(!('task_response' in normalized.criteria))
+    assert.deepEqual(normalized.task_feedback, bi())
   })
 })

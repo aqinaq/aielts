@@ -15,6 +15,7 @@ import { DEFAULT_SCOPE, buildContext, isComplete, stageAt } from '../lib/intervi
  *   idle      nothing started yet
  *   asking    waiting for the examiner's next question
  *   answering a question is on screen; the candidate is speaking
+ *   failed    the next question failed; the existing turns can be retried
  *   finished  every turn taken, ready to be graded
  */
 export function useInterview(lang) {
@@ -35,6 +36,7 @@ export function useInterview(lang) {
 
       setStatus('asking')
       setError(null)
+      setCurrent(null)
 
       try {
         const response = await fetch('/api/interview', {
@@ -55,9 +57,9 @@ export function useInterview(lang) {
         setStatus('answering')
       } catch (requestError) {
         setError(requestError.message)
-        // Stay on the previous status rather than stranding the session: the
-        // UI offers a retry, and the turns already taken are untouched.
-        setStatus(history.length ? 'answering' : 'idle')
+        // The last question has already been answered. Keep the turns, but
+        // never leave that old question available to submit a second time.
+        setStatus('failed')
       }
     },
     [lang],
@@ -78,7 +80,7 @@ export function useInterview(lang) {
   /** Files the answer to the question on screen and asks the next one. */
   const submit = useCallback(
     async ({ answer, audioBlob, durationMs }) => {
-      if (!current) return
+      if (!current || status !== 'answering') return
 
       const next = [
         ...turns,
@@ -101,12 +103,14 @@ export function useInterview(lang) {
       }
       await fetchQuestion(next, scope)
     },
-    [current, turns, scope, fetchQuestion],
+    [current, status, turns, scope, fetchQuestion],
   )
 
   const retry = useCallback(
-    () => fetchQuestion(turns, scope),
-    [fetchQuestion, turns, scope],
+    () => {
+      if (status === 'failed') return fetchQuestion(turns, scope)
+    },
+    [fetchQuestion, status, turns, scope],
   )
 
   const reset = useCallback(() => {

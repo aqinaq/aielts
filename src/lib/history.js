@@ -8,6 +8,7 @@
 // who decides to create an account keeps the practice they already did.
 
 import { supabase } from './supabase'
+import { normalizeBands } from '../../api/schema.js'
 
 const STORAGE_KEY = 'aielts.history.v1'
 const MAX_LOCAL_ENTRIES = 40
@@ -18,8 +19,20 @@ const MAX_STORED_TEXT = 4000
  * The shape every component consumes, whichever backend produced it:
  * { id, at, mode, band, level, task, text, previousBand, metrics, result }
  */
-function toEntry(row) {
+function canonicalEntry(entry) {
+  if (!entry.result?.criteria) return entry
+  const mode = entry.mode === 'write' ? 'writing' : 'speaking'
+  const result = normalizeBands(entry.result, mode)
   return {
+    ...entry,
+    result,
+    band: result.overall_band,
+    previousBand: result.overall_band !== entry.band ? null : entry.previousBand,
+  }
+}
+
+function toEntry(row) {
+  return canonicalEntry({
     id: row.id,
     at: new Date(row.created_at).getTime(),
     mode: row.mode,
@@ -30,7 +43,7 @@ function toEntry(row) {
     previousBand: row.previous_band == null ? null : Number(row.previous_band),
     metrics: row.metrics ?? null,
     result: row.result,
-  }
+  })
 }
 
 const toRow = (entry, userId) => ({
@@ -48,12 +61,13 @@ const toRow = (entry, userId) => ({
 
 /** Band of the most recent attempt in the same mode, or null on a first try. */
 export function previousBandFor(entries, mode) {
-  const previous = entries.find((entry) => entry.mode === mode)
+  const previous = entries.find((entry) => entry.mode === mode && Number.isFinite(entry.band))
   return previous ? previous.band : null
 }
 
 /** Builds a canonical entry from a finished analysis. */
 export function makeEntry(entries, { mode, task, text, result, metrics }) {
+  if (!Number.isFinite(result.overall_band)) throw new Error('Cannot save an unscored attempt')
   return {
     id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     at: Date.now(),
@@ -74,7 +88,7 @@ export function loadLocal() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
     const parsed = raw ? JSON.parse(raw) : []
-    return Array.isArray(parsed) ? parsed : []
+    return Array.isArray(parsed) ? parsed.map(canonicalEntry) : []
   } catch {
     // Corrupted or unavailable storage (private mode, quota) — start clean
     // rather than breaking the whole app.
@@ -142,12 +156,15 @@ export async function migrateLocalToRemote(userId) {
   const local = loadLocal()
   if (local.length === 0) return 0
 
+  const scored = local.filter((entry) => Number.isFinite(entry.band))
+  if (scored.length === 0) return 0
+
   const { error } = await supabase
     .from('attempts')
-    .insert(local.map((entry) => toRow(entry, userId)))
+    .insert(scored.map((entry) => toRow(entry, userId)))
 
   if (error) throw error
 
-  clearLocal()
-  return local.length
+  persistLocal(local.filter((entry) => !Number.isFinite(entry.band)))
+  return scored.length
 }

@@ -79,7 +79,7 @@ export default function TaskInput({ mode, value, meta, onChange, onPick }) {
           <ClipboardList className="size-4 text-slate-400" aria-hidden="true" />
           {t('task.label')}
           <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-normal text-slate-500">
-            {t('task.optional')}
+            {t(mode === 'write' ? 'task.required' : 'task.optional')}
           </span>
         </label>
 
@@ -103,7 +103,7 @@ export default function TaskInput({ mode, value, meta, onChange, onPick }) {
       />
 
       {meta ? <ExamTimer minutes={meta.minutes} /> : (
-        <p className="text-xs text-slate-400">{t('task.hint')}</p>
+        <p className="text-xs text-slate-400">{t(mode === 'write' ? 'task.requiredHint' : 'task.hint')}</p>
       )}
 
       {isPickerOpen && (

@@ -40,17 +40,18 @@ const criterion = (hint) =>
     comment: bilingual(`2-3 sentences justifying the ${hint} band, quoting the candidate`),
   })
 
-/**
- * Criteria depend on the mode, and the task criterion only exists when a task
- * was supplied — a model asked to grade "task achievement" with no task will
- * invent one.
- */
-export function criteriaFields(mode, hasTask) {
+export const OFFICIAL_CRITERIA = {
+  speaking: ['fluency_coherence', 'lexical_resource', 'grammatical_range', 'pronunciation'],
+  writing: ['task_achievement', 'coherence_cohesion', 'lexical_resource', 'grammatical_range'],
+}
+
+/** The text pass has three Speaking criteria; pronunciation comes from audio. */
+export function criteriaFields(mode) {
   const fields = {}
 
-  if (hasTask) {
-    fields[mode === 'speaking' ? 'task_response' : 'task_achievement'] = criterion(
-      'task response — does it answer every part of the prompt and meet the stated requirements',
+  if (mode === 'writing') {
+    fields.task_achievement = criterion(
+      'task achievement or response — does the writing address every part of the actual task',
     )
   }
 
@@ -135,10 +136,15 @@ export function interviewSchema(kind) {
 
 export function analysisSchema(mode, hasTask) {
   return object({
-    overall_band: num('0-9 in steps of 0.5; the mean of the criterion bands, rounded to the nearest half band'),
+    overall_band: num(mode === 'speaking'
+      ? 'provisional mean of the three text criteria; the server removes this until pronunciation is marked'
+      : '0-9 in steps of 0.5; the mean of the four Writing criteria'),
     level: enumOf(['A1', 'A2', 'B1', 'B2', 'C1', 'C2']),
     summary: bilingual('2-3 sentences on the overall impression'),
-    criteria: object(criteriaFields(mode, hasTask)),
+    criteria: object(criteriaFields(mode)),
+    ...(mode === 'speaking' && hasTask
+      ? { task_feedback: bilingual('how well the answer addressed the supplied prompt; feedback only, never an IELTS Speaking band criterion') }
+      : {}),
     strengths: arrayOf(bilingual('one specific strength'), '2-4 items'),
     improvements: arrayOf(
       bilingual('one actionable improvement'),
@@ -283,15 +289,22 @@ export function validate(schema, value) {
  */
 export const toBand = (value) => Math.min(9, Math.max(0, Math.round(value * 2) / 2))
 
-export function normalizeBands(analysis) {
+export function officialBand(criteria, mode) {
+  const names = OFFICIAL_CRITERIA[mode]
+  if (!names || names.some((name) => !Number.isFinite(criteria?.[name]?.band))) return null
+  const mean = names.reduce((sum, name) => sum + toBand(criteria[name].band), 0) / names.length
+  return toBand(mean)
+}
+
+export function normalizeBands(analysis, mode = 'writing') {
+  const { task_response: legacyTask, ...criteria } = analysis.criteria
+  const normalized = Object.fromEntries(
+    Object.entries(criteria).map(([key, value]) => [key, { ...value, band: toBand(value.band) }]),
+  )
   return {
     ...analysis,
-    overall_band: toBand(analysis.overall_band),
-    criteria: Object.fromEntries(
-      Object.entries(analysis.criteria).map(([key, criterion]) => [
-        key,
-        { ...criterion, band: toBand(criterion.band) },
-      ]),
-    ),
+    criteria: normalized,
+    ...(legacyTask && !analysis.task_feedback ? { task_feedback: legacyTask.comment } : {}),
+    overall_band: officialBand(normalized, mode),
   }
 }

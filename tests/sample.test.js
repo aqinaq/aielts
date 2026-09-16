@@ -40,8 +40,8 @@ describe('sample analysis', () => {
       'grammatical_range',
       'lexical_resource',
       'pronunciation',
-      'task_response',
     ])
+    assert.ok(SAMPLE_RESULT.task_feedback.kk && SAMPLE_RESULT.task_feedback.en)
   })
 
   it('shows the pronunciation examples a real audio pass would return', () => {

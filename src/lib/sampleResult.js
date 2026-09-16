@@ -24,20 +24,17 @@ export const SAMPLE_METRICS = {
 }
 
 export const SAMPLE_RESULT = {
-  overall_band: 6.5,
+  overall_band: 6,
   level: 'B2',
   summary: {
     kk: 'Жауап тапсырманың төрт бөлігін де қамтиды және аяғына дейін түсінікті. Идеялар байланысты, бірақ грамматикалық қателер жиі — әсіресе өткен шақ пен етістіктің жіктелуінде. Лексика жеткілікті, дегенмен қарапайым сөздер қайталанады.',
     en: 'The answer covers all four parts of the prompt and stays clear throughout. Ideas connect logically, but grammatical slips are frequent — especially past tense and subject-verb agreement. Vocabulary is adequate, though it leans on simple, repeated words.',
   },
+  task_feedback: {
+    kk: 'Тапсырманың төрт тармағы да қамтылған: орны («a park near the river»), жиілігі, не істейтіні және себебі. Соңғы бөлім («when i have a difficult problem i go there») жеке мысалмен нақтыланған — бұл жақсы.',
+    en: 'All four bullet points are addressed: the location ("a park near the river"), the frequency, the activities, and the reason. The final part ("when i have a difficult problem i go there") is developed with a personal example.',
+  },
   criteria: {
-    task_response: {
-      band: 7,
-      comment: {
-        kk: 'Тапсырманың төрт тармағы да қамтылған: орны («a park near the river»), жиілігі, не істейтіні және себебі. Соңғы бөлім («when i have a difficult problem i go there») жеке мысалмен нақтыланған — бұл жақсы.',
-        en: 'All four bullet points are addressed: the location ("a park near the river"), the frequency, the activities, and the reason. The final part ("when i have a difficult problem i go there") is developed with a personal example, which lifts it.',
-      },
-    },
     fluency_coherence: {
       band: 6.5,
       comment: {

@@ -32,6 +32,8 @@ import { CHARTS, describeChart } from './lib/charts'
 import { buildSubmission, longestRecording } from './lib/interview'
 import { computeSpeechMetrics, formatDuration } from './lib/speechMetrics'
 import { runAnalysis } from './lib/runAnalysis'
+import { prepareAudio } from './lib/audio'
+import { assessSpeech } from './lib/pronunciation'
 import { SAMPLE_RESULT, SAMPLE_TEXT } from './lib/sampleResult'
 
 const MIN_WORDS = 8
@@ -57,6 +59,9 @@ export default function App() {
   const [result, setResult] = useState(null)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [apiError, setApiError] = useState(null)
+  const [turnError, setTurnError] = useState(null)
+  const [isSubmittingTurn, setIsSubmittingTurn] = useState(false)
+  const submittingTurnRef = useRef(false)
 
   const auth = useAuth()
   // Guest attempts live in localStorage and are uploaded once the user signs in.
@@ -106,6 +111,8 @@ export default function App() {
 
   const recorder = useAudioRecorder()
   const interview = useInterview(lang)
+  const isCapturing = isListening || recorder.isRecording || recorder.isStarting
+  const captureElapsedMs = Math.max(elapsedMs, recorder.elapsedMs)
 
   // An uploaded file stands in for a recording. Only one can be the answer, so
   // choosing a file clears the live transcript: the analysis then takes the
@@ -124,24 +131,36 @@ export default function App() {
     return recorder.stop()
   }, [recorder, stopListening])
 
-  const toggleCapture = useCallback(() => {
-    if (isListening) {
-      stopCapture()
+  const toggleCapture = useCallback(async () => {
+    if (isListening || recorder.isRecording || recorder.isStarting) {
+      await stopCapture()
       return
     }
+    setTurnError(null)
+    const target = mode === 'interview' ? 'interview' : 'speak'
+    setDrafts((current) => ({
+      ...current,
+      [target]: { ...current[target], text: '' },
+    }))
+    resetSession()
+    if (target === 'speak') setUploaded(null)
     recorder.reset()
-    recorder.start()
-    startListening()
-  }, [isListening, recorder, startListening, stopCapture])
+    if (recorder.isSupported) {
+      const started = await recorder.start()
+      if (started && isSupported) startListening()
+    } else if (isSupported) {
+      startListening()
+    }
+  }, [isListening, isSupported, mode, recorder, resetSession, startListening, stopCapture])
 
   const speechMetrics = useMemo(() => {
-    if (mode !== 'speak' || isListening || elapsedMs < 1000) return null
+    if (mode !== 'speak' || isCapturing || captureElapsedMs < 1000) return null
     return computeSpeechMetrics({
       text: drafts.speak.text,
-      durationMs: elapsedMs,
+      durationMs: captureElapsedMs,
       chunkTimestamps,
     })
-  }, [mode, isListening, elapsedMs, chunkTimestamps, drafts.speak.text])
+  }, [mode, isCapturing, captureElapsedMs, chunkTimestamps, drafts.speak.text])
 
   const wordCount = countWords(draft.text)
 
@@ -150,26 +169,68 @@ export default function App() {
   // gating on word count alone would lock those browsers out of the app.
   const hasRecording = mode === 'speak' && Boolean(recorder.audioBlob || uploaded)
   const canAnalyze =
-    (wordCount >= MIN_WORDS || hasRecording) && !isAnalyzing && !isListening
+    (wordCount >= MIN_WORDS || hasRecording) &&
+    (mode !== 'write' || Boolean(draft.task.trim())) &&
+    !isAnalyzing && !isCapturing
 
   const switchMode = (nextMode) => {
     // Leaving a mode mid-recording would leave the microphone open and feed
     // recognition results into a draft nobody is looking at.
-    if (nextMode !== mode) stopCapture()
+    if (nextMode !== mode) {
+      stopCapture()
+      recorder.reset()
+      resetSession()
+    }
     setMode(nextMode)
   }
 
   /** Files the current turn and clears the desk for the next question. */
   const submitTurn = async () => {
-    const audioBlob = await stopCapture()
-    const answer = drafts.interview.text
-    const durationMs = elapsedMs
+    if (submittingTurnRef.current || interview.status !== 'answering') return
+    submittingTurnRef.current = true
+    setIsSubmittingTurn(true)
+    setTurnError(null)
 
-    patchDraft({ text: '' })
-    resetSession()
-    recorder.reset()
+    try {
+      const audioBlob = await stopCapture()
+      let answer = drafts.interview.text.trim()
+      const durationMs = captureElapsedMs
 
-    await interview.submit({ answer, audioBlob, durationMs })
+      // Browsers without Web Speech have no live transcript. Transcribe each
+      // answer before asking the next question, so follow-ups and the final
+      // grading use the whole interview rather than one audio sample.
+      if (!answer && audioBlob) {
+        const prepared = await prepareAudio(audioBlob)
+        if (!prepared) throw new Error('audioUnreadable')
+        const speech = await assessSpeech(prepared.wav, lang)
+        answer = speech.transcript.trim()
+        if (!answer) throw new Error('noSpeechHeard')
+      }
+      if (!answer) throw new Error('noInput')
+
+      await interview.submit({ answer, audioBlob, durationMs })
+      setDrafts((current) => ({
+        ...current,
+        interview: { ...current.interview, text: '' },
+      }))
+      resetSession()
+      recorder.reset()
+    } catch (error) {
+      const known = ['noInput', 'noSpeechHeard', 'audioUnreadable']
+      setTurnError(
+        known.includes(error.message)
+          ? t(`errors.${error.message}`)
+          : (error.message ?? t('errors.requestFailed')),
+      )
+    } finally {
+      submittingTurnRef.current = false
+      setIsSubmittingTurn(false)
+    }
+  }
+
+  const finishInterviewEarly = async () => {
+    await stopCapture()
+    interview.finishEarly()
   }
 
   const clearText = () => {
@@ -209,7 +270,7 @@ export default function App() {
         // An uploaded file wins over the microphone: it is the more deliberate
         // choice of the two, and its transcript is what gets graded.
         audioBlob: mode === 'speak' ? (uploaded ?? captured) : null,
-        elapsedMs,
+        elapsedMs: captureElapsedMs,
         chunkTimestamps,
         hasData: Boolean(chart),
       })
@@ -226,13 +287,15 @@ export default function App() {
         previousBand: history.previousBandFor(mode),
         notes: outcome.notes,
       })
-      await history.add({
-        mode,
-        task: submittedTask,
-        text: outcome.text,
-        result: outcome.data,
-        metrics: outcome.metrics,
-      })
+      if (outcome.data.overall_band != null) {
+        await history.add({
+          mode,
+          task: submittedTask,
+          text: outcome.text,
+          result: outcome.data,
+          metrics: outcome.metrics,
+        })
+      }
     } catch (error) {
       // `runAnalysis` throws bare keys for the cases it detects itself; anything
       // from the endpoints is already a translated sentence.
@@ -280,13 +343,15 @@ export default function App() {
         previousBand: history.previousBandFor('interview'),
         notes: outcome.notes,
       })
-      await history.add({
-        mode: 'interview',
-        task: submission.task,
-        text: outcome.text,
-        result: outcome.data,
-        metrics: outcome.metrics,
-      })
+      if (outcome.data.overall_band != null) {
+        await history.add({
+          mode: 'interview',
+          task: submission.task,
+          text: outcome.text,
+          result: outcome.data,
+          metrics: outcome.metrics,
+        })
+      }
     } catch (error) {
       const known = ['noInput', 'noSpeechHeard', 'audioUnreadable']
       setApiError(
@@ -320,7 +385,7 @@ export default function App() {
     setResult({
       data: entry.result,
       text: entry.text,
-      mode: entry.mode === 'speak' ? 'speaking' : 'writing',
+      mode: entry.mode === 'write' ? 'writing' : 'speaking',
       previousBand: entry.previousBand,
     })
   }
@@ -390,18 +455,24 @@ export default function App() {
                   current={interview.current}
                   turns={interview.turns}
                   error={interview.error}
+                  turnError={turnError}
+                  recorderError={recorder.error}
                   scope={interview.scope}
                   isSupported={isSupported || recorder.isSupported}
-                  isListening={isListening}
-                  elapsedMs={elapsedMs}
+                  isListening={isCapturing}
+                  isSubmitting={isSubmittingTurn}
+                  elapsedMs={captureElapsedMs}
                   transcript={drafts.interview.text}
                   interim={interimTranscript}
                   onStart={interview.start}
                   onToggleRecord={toggleCapture}
-                  onTranscriptChange={(text) => patchDraft({ text })}
+                  onTranscriptChange={(text) => {
+                    patchDraft({ text })
+                    setTurnError(null)
+                  }}
                   onSubmit={submitTurn}
                   onRetry={interview.retry}
-                  onFinishEarly={interview.finishEarly}
+                  onFinishEarly={finishInterviewEarly}
                 />
 
                 {interview.status === 'finished' && (
@@ -448,18 +519,18 @@ export default function App() {
 
             {mode === 'speak' ? (
               <div className="space-y-6 rounded-2xl border border-slate-200 bg-white p-6">
-                {isSupported ? (
+                {isSupported || recorder.isSupported ? (
                   <>
-                    <RecordButton isListening={isListening} onToggle={toggleCapture} />
+                    <RecordButton isListening={isCapturing} onToggle={toggleCapture} />
 
                     <p className="text-center text-xs text-slate-400">
-                      {elapsedMs > 0 && (
+                      {captureElapsedMs > 0 && (
                         <span className="font-mono tabular-nums text-slate-500">
-                          {formatDuration(elapsedMs)}
+                          {formatDuration(captureElapsedMs)}
                         </span>
                       )}
-                      {elapsedMs > 0 && ' · '}
-                      {t('speech.languageNote')}
+                      {captureElapsedMs > 0 && ' · '}
+                      {t(isSupported ? 'speech.languageNote' : 'speech.liveUnavailable')}
                     </p>
 
                     {speechError && (
@@ -471,30 +542,36 @@ export default function App() {
                         {t(`errors.${speechError}`)}
                       </p>
                     )}
+                    {recorder.error && (
+                      <p className="flex gap-2 rounded-lg bg-rose-50 p-3 text-sm text-rose-700">
+                        <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+                        {t(`errors.${recorder.error}`)}
+                      </p>
+                    )}
                   </>
                 ) : (
                   <p className="flex gap-2 rounded-lg bg-amber-50 p-3 text-sm text-amber-800">
                     <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
-                    {t('speech.notSupported')}
+                    {t('speech.recordUnavailable')}
                   </p>
                 )}
 
                 <TranscriptArea
                   value={draft.text}
                   interim={interimTranscript}
-                  isListening={isListening}
+                  isListening={isCapturing}
                   onChange={(text) => patchDraft({ text })}
                   onClear={clearText}
                 />
 
-                {!isListening && !uploaded && <AudioPlayback src={recorder.audioUrl} />}
+                {!isCapturing && !uploaded && <AudioPlayback src={recorder.audioUrl} />}
 
                 {speechMetrics && !uploaded && <SpeechMetrics metrics={speechMetrics} />}
 
                 <div className="border-t border-slate-100 pt-5">
                   <AudioUpload
                     file={uploaded}
-                    disabled={isListening}
+                    disabled={isCapturing}
                     onSelect={(file) => {
                       stopCapture()
                       setUploaded(file)
@@ -534,11 +611,25 @@ export default function App() {
                   ` / ${draft.taskMeta.minWords} ${t('task.minWords')}`}
                 {wordCount < MIN_WORDS
                   ? ` · ${t('counter.minWords', { n: MIN_WORDS })}`
-                  : ` · ${t('actions.shortcutHint')}`}
+                  : mode === 'write' && !draft.task.trim()
+                    ? ` · ${t('counter.taskNeeded')}`
+                    : ` · ${t('actions.shortcutHint')}`}
               </p>
             </div>
               </>
             )}
+
+            <HistoryPanel
+              entries={history.entries}
+              isLoading={history.isLoading}
+              error={history.error}
+              isSignedIn={Boolean(auth.user)}
+              isAuthEnabled={auth.isEnabled}
+              onOpen={openEntry}
+              onDelete={history.remove}
+              onClear={history.clear}
+              onSignIn={auth.signIn}
+            />
           </section>
 
           {/* Result side */}
@@ -602,18 +693,6 @@ export default function App() {
             </div>
           </section>
         </div>
-
-        <HistoryPanel
-          entries={history.entries}
-          isLoading={history.isLoading}
-          error={history.error}
-          isSignedIn={Boolean(auth.user)}
-          isAuthEnabled={auth.isEnabled}
-          onOpen={openEntry}
-          onDelete={history.remove}
-          onClear={history.clear}
-          onSignIn={auth.signIn}
-        />
       </main>
     </div>
   )

@@ -91,9 +91,43 @@ describe('App', () => {
     assert.ok(html.includes('Сөйлеу'), 'Kazakh is the default UI language')
     assert.ok(!html.includes('undefined'), 'no undefined leaked into the markup')
   })
+
+  it('offers recording when audio capture exists without live speech recognition', () => {
+    const oldRecorder = Object.getOwnPropertyDescriptor(globalThis, 'MediaRecorder')
+    const oldNavigator = Object.getOwnPropertyDescriptor(globalThis, 'navigator')
+    Object.defineProperty(globalThis, 'MediaRecorder', { configurable: true, value: class {} })
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: { mediaDevices: { getUserMedia() {} } },
+    })
+
+    try {
+      const html = render(h(components.App))
+      assert.ok(html.includes('aria-label="Жазуды бастау"'))
+      assert.ok(html.includes('Тікелей мәтін шықпайды'))
+    } finally {
+      if (oldRecorder) Object.defineProperty(globalThis, 'MediaRecorder', oldRecorder)
+      else delete globalThis.MediaRecorder
+      if (oldNavigator) Object.defineProperty(globalThis, 'navigator', oldNavigator)
+      else delete globalThis.navigator
+    }
+  })
 })
 
 describe('AnalysisResult', () => {
+  it('shows text feedback without inventing a complete Speaking band', () => {
+    const html = render(h(components.AnalysisResult, {
+      result: { ...result, overall_band: null, task_feedback: bi('Тақырып қамтылған.', 'On topic.') },
+      text,
+      mode: 'speaking',
+      previousBand: 7,
+    }))
+    assert.ok(html.includes('Толық band жоқ'))
+    assert.ok(html.includes('Тақырып қамтылған.'))
+    assert.ok(html.includes('айтылымды дыбыстан бағалау қажет'))
+    assert.ok(!html.includes('+1.0'), 'no progress delta is calculated from a partial result')
+  })
+
   it('shows the band, level, inline marks and the delta', () => {
     const html = render(
       h(components.AnalysisResult, { result, text, mode: 'speaking', previousBand: 6 }),
@@ -196,6 +230,14 @@ describe('AnalysisResult', () => {
 })
 
 describe('ProgressChart', () => {
+  it('ignores legacy attempts that no longer qualify for an overall band', () => {
+    const html = render(h(components.ProgressChart, {
+      entries: [...entries, { id: 'partial', at: 4000, mode: 'speak', band: null }],
+    }))
+    assert.ok(!html.includes('NaN'))
+    assert.ok(!html.includes('null'))
+  })
+
   it('draws a line per mode with no NaN coordinates', () => {
     const html = render(h(components.ProgressChart, { entries }))
     assert.ok(html.includes('<svg'))
@@ -252,6 +294,17 @@ describe('HistoryPanel', () => {
     const html = render(h(components.HistoryPanel, { ...props, isSignedIn: false, isAuthEnabled: false }))
     assert.ok(!html.includes('Google арқылы кіру'))
     assert.ok(html.includes('+0.5'), 'history still works')
+  })
+
+  it('keeps a legacy unscored attempt accessible without displaying a false band', () => {
+    const html = render(h(components.HistoryPanel, {
+      ...props,
+      entries: [{ ...entries[0], band: null, previousBand: null }],
+      isSignedIn: false,
+      isAuthEnabled: false,
+    }))
+    assert.ok(html.includes('—'))
+    assert.ok(html.includes('Ашу'))
   })
 })
 
@@ -380,13 +433,16 @@ describe('Interview', () => {
     const html = render(
       h(components.Interview, {
         ...base,
-        status: 'answering',
+        status: 'failed',
         current: null,
         error: 'Сағаттық шек асты.',
+        turns: [{ part: 1, kind: 'question', question: 'Where do you live?', answer: 'In Astana.' }],
       }),
     )
     assert.ok(html.includes('Сағаттық шек асты.'))
     assert.ok(html.includes('Қайталап көру'))
+    assert.ok(html.includes('In Astana.'))
+    assert.ok(!html.includes('Келесі сұрақ'), 'the previous question cannot be submitted again')
   })
 })
 

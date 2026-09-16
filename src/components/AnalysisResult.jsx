@@ -19,7 +19,6 @@ const pick = (field, lang) => field?.[lang] ?? field?.en ?? ''
 
 const CRITERION_ORDER = [
   'task_achievement',
-  'task_response',
   'fluency_coherence',
   'coherence_cohesion',
   'lexical_resource',
@@ -90,8 +89,9 @@ export default function AnalysisResult({
   isSample = false,
 }) {
   const { lang, t } = useLanguage()
-  const theme = bandTheme(result.overall_band)
-  const delta = previousBand == null ? null : result.overall_band - previousBand
+  const hasOverallBand = Number.isFinite(result.overall_band)
+  const theme = hasOverallBand ? bandTheme(result.overall_band) : null
+  const delta = !hasOverallBand || previousBand == null ? null : result.overall_band - previousBand
   const hasPronunciation = Boolean(result.criteria?.pronunciation)
 
   return (
@@ -107,10 +107,10 @@ export default function AnalysisResult({
       <div className="flex flex-wrap items-start gap-6">
         <div className="flex flex-col items-center">
           <span className="text-xs uppercase tracking-wide text-slate-400">
-            {t('result.band')}
+            {t(hasOverallBand ? 'result.band' : 'result.partialBand')}
           </span>
-          <span className={`text-6xl font-semibold tabular-nums ${theme.text}`}>
-            {result.overall_band.toFixed(1)}
+          <span className={`text-6xl font-semibold tabular-nums ${theme?.text ?? 'text-slate-400'}`}>
+            {hasOverallBand ? result.overall_band.toFixed(1) : '—'}
           </span>
         </div>
 
@@ -119,9 +119,9 @@ export default function AnalysisResult({
             <span className="rounded-full bg-indigo-50 px-3 py-1 text-sm font-medium text-indigo-700">
               CEFR {result.level}
             </span>
-            <span aria-hidden="true">{theme.emoji}</span>
+            {theme && <span aria-hidden="true">{theme.emoji}</span>}
 
-            {delta === null ? (
+            {!hasOverallBand ? null : delta === null ? (
               <span className="text-xs text-slate-400">{t('result.firstAttempt')}</span>
             ) : (
               delta !== 0 && (
@@ -159,6 +159,13 @@ export default function AnalysisResult({
         </button>
       </div>
 
+      {!hasOverallBand && (
+        <p className="flex gap-2 rounded-xl bg-amber-50 p-3 text-sm leading-relaxed text-amber-800">
+          <Info className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
+          {t('result.partialNote')}
+        </p>
+      )}
+
       <div className="grid gap-4 sm:grid-cols-2">
         {CRITERION_ORDER.map((key) => {
           const criterion = result.criteria?.[key]
@@ -176,6 +183,15 @@ export default function AnalysisResult({
           )
         })}
       </div>
+
+      {result.task_feedback && (
+        <section className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
+          <h3 className="text-sm font-semibold text-slate-900">{t('result.taskFeedback')}</h3>
+          <p className="mt-2 text-sm leading-relaxed text-slate-600">
+            {pick(result.task_feedback, lang)}
+          </p>
+        </section>
+      )}
 
       {result.mispronounced?.length > 0 && (
         <section className="space-y-2">

@@ -27,7 +27,8 @@ export default function ProgressChart({ entries }) {
   const { t } = useLanguage()
 
   // History is newest-first; a trend reads oldest-first.
-  const ordered = [...entries].sort((a, b) => a.at - b.at)
+  const ordered = entries.filter((entry) => Number.isFinite(entry.band))
+    .sort((a, b) => a.at - b.at)
 
   if (ordered.length < 2) {
     return <p className="text-xs text-slate-400">{t('history.chartHint')}</p>

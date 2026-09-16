@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { buildSystemPrompt, buildUserPrompt, resolveProvider } from '../api/analyze.js'
+import handler, { buildSystemPrompt, buildUserPrompt, resolveProvider } from '../api/analyze.js'
 import { analysisSchema, extractJson } from '../api/schema.js'
 
 describe('resolveProvider', () => {
@@ -31,6 +31,37 @@ describe('resolveProvider', () => {
     // request, so treating it as an auth failure there would mislead.
     assert.ok(resolveProvider({ GEMINI_API_KEY: 'AQ.y' }).badKeyStatuses.includes(400))
     assert.ok(!resolveProvider({ DEEPSEEK_API_KEY: 'sk-x' }).badKeyStatuses.includes(400))
+  })
+})
+
+describe('Writing task requirement', () => {
+  it('rejects an IELTS Writing request without an actual prompt before contacting a model', async () => {
+    const previousGemini = process.env.GEMINI_API_KEY
+    const previousDeepSeek = process.env.DEEPSEEK_API_KEY
+    delete process.env.GEMINI_API_KEY
+    delete process.env.DEEPSEEK_API_KEY
+    let statusCode
+    let payload
+    const res = {
+      setHeader() {},
+      status(code) { statusCode = code; return this },
+      json(value) { payload = value; return this },
+    }
+    try {
+      await handler({
+        method: 'POST',
+        body: { mode: 'writing', lang: 'en', task: '', text: 'This is a sample answer with enough words to analyze.' },
+        headers: {},
+        socket: { remoteAddress: 'writing-task-test' },
+      }, res)
+    } finally {
+      if (previousGemini == null) delete process.env.GEMINI_API_KEY
+      else process.env.GEMINI_API_KEY = previousGemini
+      if (previousDeepSeek == null) delete process.env.DEEPSEEK_API_KEY
+      else process.env.DEEPSEEK_API_KEY = previousDeepSeek
+    }
+    assert.equal(statusCode, 400)
+    assert.match(payload.error, /writing task prompt/i)
   })
 })
 

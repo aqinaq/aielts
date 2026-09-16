@@ -5,7 +5,7 @@
 // work, so the overall band has to be recomputed here — DeepSeek averaged three
 // criteria and does not know a fourth exists.
 
-import { toBand } from '../../api/schema.js'
+import { officialBand } from '../../api/schema.js'
 
 /**
  * Adds the pronunciation criterion and re-averages the overall band.
@@ -21,13 +21,11 @@ export function mergePronunciation(analysis, speech) {
   if (!analysis || !speech?.pronunciation) return analysis
 
   const criteria = { ...analysis.criteria, pronunciation: speech.pronunciation }
-  const bands = Object.values(criteria).map((criterion) => criterion.band)
-  const mean = bands.reduce((total, band) => total + band, 0) / bands.length
 
   return {
     ...analysis,
     criteria,
-    overall_band: toBand(mean),
+    overall_band: officialBand(criteria, 'speaking'),
     // Kept beside the criterion rather than inside it: these are teaching
     // material for the learner, not evidence for the band.
     mispronounced: speech.mispronounced ?? [],

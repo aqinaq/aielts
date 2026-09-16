@@ -93,11 +93,12 @@ export default function HistoryPanel({
           <ul className="divide-y divide-slate-100">
             {entries.map((entry) => {
               const delta =
-                entry.previousBand == null ? null : entry.band - entry.previousBand
+                !Number.isFinite(entry.band) || entry.previousBand == null
+                  ? null : entry.band - entry.previousBand
               return (
                 <li key={entry.id} className="flex items-center gap-3 py-2.5">
                   <span className="w-12 shrink-0 text-base font-semibold tabular-nums text-slate-900">
-                    {entry.band.toFixed(1)}
+                    {Number.isFinite(entry.band) ? entry.band.toFixed(1) : '—'}
                   </span>
 
                   {delta !== null && delta !== 0 && (

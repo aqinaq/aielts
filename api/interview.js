@@ -26,6 +26,7 @@ const MESSAGES = {
     missingKey:
       'API кілт орнатылмаған. .env.local файлына GEMINI_API_KEY немесе DEEPSEEK_API_KEY қосыңыз.',
     rateLimited: 'Сағаттық шек асты. {{minutes}} минуттан кейін қайталаңыз.',
+    protectionUnavailable: 'AI сұхбат уақытша қолжетімсіз. Кейінірек қайталаңыз.',
     badShape: 'Емтихан сұрағын құрастыру мүмкін болмады. Қайталап көріңіз.',
     apiError: 'Сұрақ дайындау кезінде қате шықты',
   },
@@ -34,6 +35,7 @@ const MESSAGES = {
     missingKey:
       'No API key is set. Add GEMINI_API_KEY or DEEPSEEK_API_KEY to your .env.local file.',
     rateLimited: 'Hourly limit reached. Try again in {{minutes}} minutes.',
+    protectionUnavailable: 'AI interview is temporarily unavailable. Please try again later.',
     badShape: 'Could not compose the next exam question. Please try again.',
     apiError: 'Failed to prepare the next question',
   },
@@ -102,7 +104,10 @@ export default async function handler(req, res) {
   const provider = resolveProvider()
   if (!provider) return res.status(500).json({ error: messages.missingKey })
 
-  const limit = checkRateLimit('interview', clientIp(req))
+  const limit = await checkRateLimit('interview', clientIp(req))
+  if (limit.configurationError || limit.backendError) {
+    return res.status(503).json({ error: messages.protectionUnavailable })
+  }
   if (!limit.allowed) {
     res.setHeader('Retry-After', String(limit.retryAfterMinutes * 60))
     return res.status(429).json({

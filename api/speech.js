@@ -24,6 +24,7 @@ const MESSAGES = {
     tooShort: 'Жазба тым қысқа.',
     tooLarge: 'Жазба тым ұзын. Қысқарақ жауап жазып көріңіз.',
     rateLimited: 'Сағаттық шек асты. {{minutes}} минуттан кейін қайталаңыз.',
+    protectionUnavailable: 'AI аудио талдауы уақытша қолжетімсіз. Кейінірек қайталаңыз.',
     badShape: 'Модель күтілген пішінде жауап бермеді.',
     apiRateLimited: 'Сұраныс шегі асты. Біраздан соң қайталаңыз.',
     badKey: 'GEMINI_API_KEY жарамсыз.',
@@ -39,6 +40,7 @@ const MESSAGES = {
     tooShort: 'The recording is too short.',
     tooLarge: 'The recording is too long. Try a shorter answer.',
     rateLimited: 'Hourly limit reached. Try again in {{minutes}} minutes.',
+    protectionUnavailable: 'AI audio analysis is temporarily unavailable. Please try again later.',
     badShape: 'The model did not answer in the expected shape.',
     apiRateLimited: 'Rate limit reached. Please try again shortly.',
     badKey: 'GEMINI_API_KEY is invalid.',
@@ -119,7 +121,10 @@ export default async function handler(req, res) {
     return res.status(500).json({ error: messages.wrongKey })
   }
 
-  const limit = checkRateLimit('speech', clientIp(req))
+  const limit = await checkRateLimit('speech', clientIp(req))
+  if (limit.configurationError || limit.backendError) {
+    return res.status(503).json({ error: messages.protectionUnavailable })
+  }
   if (!limit.allowed) {
     res.setHeader('Retry-After', String(limit.retryAfterMinutes * 60))
     return res.status(429).json({

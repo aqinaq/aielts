@@ -26,9 +26,11 @@ export function useAudioRecorder() {
   // The blob is what gets analyzed; the url is only for the playback element.
   const [audioBlob, setAudioBlob] = useState(null)
   const [error, setError] = useState(null)
+  const [isRecording, setIsRecording] = useState(false)
+  const [isStarting, setIsStarting] = useState(false)
+  const [elapsedMs, setElapsedMs] = useState(0)
 
   const recorderRef = useRef(null)
-  const chunksRef = useRef([])
   const streamRef = useRef(null)
   const urlRef = useRef(null)
   // MediaRecorder finishes asynchronously: `stop()` returns immediately and the
@@ -36,8 +38,19 @@ export function useAudioRecorder() {
   // immediately submit it would otherwise read the previous turn's audio, or
   // nothing at all — so `stop()` hands back a promise these two settle.
   const blobRef = useRef(null)
-  const waitersRef = useRef([])
+  const waitersRef = useRef(new Map())
   const generationRef = useRef(0)
+  const startedAtRef = useRef(null)
+  const startingRef = useRef(false)
+  const recordingRef = useRef(false)
+
+  useEffect(() => {
+    if (!isRecording) return undefined
+    const interval = setInterval(() => {
+      if (startedAtRef.current) setElapsedMs(Date.now() - startedAtRef.current)
+    }, 500)
+    return () => clearInterval(interval)
+  }, [isRecording])
 
   const releaseUrl = useCallback(() => {
     if (urlRef.current) {
@@ -51,15 +64,17 @@ export function useAudioRecorder() {
     streamRef.current = null
   }, [])
 
-  const settle = useCallback((blob) => {
-    const waiters = waitersRef.current
-    waitersRef.current = []
+  const settle = useCallback((generation, blob) => {
+    const waiters = waitersRef.current.get(generation) ?? []
+    waitersRef.current.delete(generation)
     waiters.forEach((resolve) => resolve(blob))
   }, [])
 
   const start = useCallback(async () => {
-    if (!isSupported) return
+    if (!isSupported || startingRef.current || recordingRef.current) return false
     setError(null)
+    startingRef.current = true
+    setIsStarting(true)
 
     // Every recording carries the generation it began in. `reset` bumps the
     // counter, so a recording that finishes after being discarded can tell that
@@ -69,25 +84,38 @@ export function useAudioRecorder() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      if (generation !== generationRef.current) {
+        stream.getTracks().forEach((track) => track.stop())
+        return false
+      }
       streamRef.current = stream
 
       const mimeType = pickMimeType()
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined)
-      chunksRef.current = []
+      const chunks = []
 
       recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) chunksRef.current.push(event.data)
+        if (event.data.size > 0) chunks.push(event.data)
       }
 
       recorder.onstop = () => {
-        stopStream()
+        stream.getTracks().forEach((track) => track.stop())
+        if (streamRef.current === stream) streamRef.current = null
+        if (recorderRef.current?.recorder === recorder) recorderRef.current = null
 
         if (generation !== generationRef.current) {
-          settle(null)
+          settle(generation, null)
           return
         }
 
-        const blob = new Blob(chunksRef.current, {
+        recordingRef.current = false
+        setIsRecording(false)
+        if (startedAtRef.current) {
+          setElapsedMs(Date.now() - startedAtRef.current)
+          startedAtRef.current = null
+        }
+
+        const blob = new Blob(chunks, {
           type: mimeType || 'audio/webm',
         })
         releaseUrl()
@@ -96,30 +124,52 @@ export function useAudioRecorder() {
         blobRef.current = blob
         setAudioUrl(url)
         setAudioBlob(blob)
-        settle(blob)
+        settle(generation, blob)
       }
 
       recorder.start()
-      recorderRef.current = recorder
+      recorderRef.current = { recorder, generation }
+      startedAtRef.current = Date.now()
+      setElapsedMs(0)
+      recordingRef.current = true
+      setIsRecording(true)
+      return true
     } catch {
-      // Permission denial is already reported by the speech hook; don't show
-      // the same problem twice.
-      setError('recorderFailed')
-      stopStream()
+      if (generation === generationRef.current) {
+        setError('recorderFailed')
+        stopStream()
+      }
+      return false
+    } finally {
+      if (generation === generationRef.current) {
+        startingRef.current = false
+        setIsStarting(false)
+      }
     }
   }, [isSupported, releaseUrl, settle, stopStream])
 
   /** Resolves with the finished recording, or the last one if already stopped. */
   const stop = useCallback(() => {
-    const recorder = recorderRef.current
-    if (!recorder || recorder.state === 'inactive') {
+    const active = recorderRef.current
+    const recorder = active?.recorder
+    if (!recorder) {
+      if (startingRef.current) {
+        generationRef.current += 1
+        startingRef.current = false
+        setIsStarting(false)
+        return Promise.resolve(null)
+      }
       return Promise.resolve(blobRef.current)
     }
 
     recorderRef.current = null
+    recordingRef.current = false
+    setIsRecording(false)
     return new Promise((resolve) => {
-      waitersRef.current.push(resolve)
-      recorder.stop()
+      const waiters = waitersRef.current.get(active.generation) ?? []
+      waiters.push(resolve)
+      waitersRef.current.set(active.generation, waiters)
+      if (recorder.state !== 'inactive') recorder.stop()
     })
   }, [])
 
@@ -128,6 +178,12 @@ export function useAudioRecorder() {
     // blob back over the state cleared just below.
     generationRef.current += 1
     stop()
+    startingRef.current = false
+    recordingRef.current = false
+    startedAtRef.current = null
+    setElapsedMs(0)
+    setIsStarting(false)
+    setIsRecording(false)
     releaseUrl()
     blobRef.current = null
     setAudioUrl(null)
@@ -143,5 +199,5 @@ export function useAudioRecorder() {
     [releaseUrl, stopStream],
   )
 
-  return { isSupported, audioUrl, audioBlob, error, start, stop, reset }
+  return { isSupported, isRecording, isStarting, elapsedMs, audioUrl, audioBlob, error, start, stop, reset }
 }
