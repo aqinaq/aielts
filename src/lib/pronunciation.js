@@ -6,6 +6,7 @@
 // criteria and does not know a fourth exists.
 
 import { officialBand } from '../../api/schema.js'
+import { responseError } from './requestError.js'
 
 /**
  * Adds the pronunciation criterion and re-averages the overall band.
@@ -45,7 +46,6 @@ export async function assessSpeech(wav, lang) {
     body: wav,
   })
 
-  const payload = await response.json()
-  if (!response.ok) throw new Error(payload.error ?? 'speech request failed')
-  return payload
+  if (!response.ok) throw await responseError(response, 'Speech request failed')
+  return response.json()
 }

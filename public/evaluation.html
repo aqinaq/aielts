@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AIELTS evaluation status</title>
+    <style>
+      body { margin: 0; background: #f8fafc; color: #0f172a; font: 16px/1.6 system-ui, sans-serif; }
+      main { max-width: 720px; margin: 0 auto; padding: 56px 24px; }
+      article { padding: 32px; border: 1px solid #e2e8f0; border-radius: 18px; background: white; }
+      .status { display: inline-block; padding: 4px 10px; border-radius: 999px; background: #fff7ed; color: #9a3412; font-size: 13px; font-weight: 700; }
+      h1 { margin: 14px 0 8px; line-height: 1.2; } h2 { margin-top: 28px; font-size: 18px; }
+      p, li { color: #475569; } a { color: #4f46e5; } code { font-size: 14px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <article>
+        <span class="status">Not yet evaluated</span>
+        <h1>AIELTS teacher-score comparison</h1>
+        <p><strong>No accuracy result is published yet.</strong> The repository does not contain consented, anonymized learner responses with independent teacher criterion scores. Sample UI fixtures are not evidence and are excluded.</p>
+        <h2>Planned small evaluation</h2>
+        <ul>
+          <li>At least 20 anonymized Writing responses across multiple tasks and band levels.</li>
+          <li>Independent IELTS teacher scores for all four official criteria and overall band, assigned before viewing the AI output.</li>
+          <li>Report mean absolute error, signed error, percentage within 0.5 band, per-criterion error, failed requests, model/version, and date.</li>
+        </ul>
+        <p>The reproducible runner is <code>npm run eval</code>. This page must only be replaced with measured results generated from the locked dataset and saved predictions.</p>
+        <p><a href="/">Return to AIELTS</a> · <a href="https://ielts.org/take-a-test/your-results/ielts-scoring-in-detail">Official IELTS scoring criteria</a></p>
+      </article>
+    </main>
+  </body>
+</html>

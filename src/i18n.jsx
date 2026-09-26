@@ -97,7 +97,9 @@ const translations = {
 
     audio: {
       label: 'Жазбаңызды тыңдаңыз',
-      note: 'Жазба талдау кезінде AI-ға жіберіледі, бірақ сақталмайды; бетті жаңартсаңыз жоғалады.',
+      note: 'Жазба талдау үшін AI сервисіне жіберіледі, бірақ AIELTS оны сақтамайды; бетті жаңартсаңыз жоғалады.',
+      delete: 'Ағымдағы аудионы өшіру',
+      deleted: 'Аудио осы құрылғыдан өшірілді.',
     },
 
     sample: {
@@ -121,7 +123,7 @@ const translations = {
 
     actions: {
       clear: 'Тазалау',
-      analyze: 'Талдау және бағалау',
+      analyze: 'Талдау және болжамды band алу',
       analyzing: 'Талдау жүріп жатыр…',
       retry: 'Қайталап көру',
       shortcutHint: 'немесе ⌘/Ctrl + Enter',
@@ -158,7 +160,7 @@ const translations = {
       loadingHint: 'Әдетте 20–40 секунд алады',
       emptyState: 'Сөйлеңіз немесе мәтін енгізіңіз — нәтиже осы жерде шығады.',
       errorTitle: 'Талдау сәтсіз аяқталды',
-      band: 'AI band бағасы',
+      band: 'Болжамды practice band',
       partialBand: 'Толық band жоқ',
       partialNote: 'Жалпы IELTS Speaking band үшін айтылымды дыбыстан бағалау қажет. Мәтін бойынша кері байланыс төменде көрсетілген; бұл талпыныс балл тарихына қосылмайды.',
       taskFeedback: 'Тапсырмаға сәйкестік',
@@ -178,10 +180,54 @@ const translations = {
         'Жазба ұзын болғандықтан алғашқы бөлігі ғана тыңдалды — баға сол үзінді бойынша қойылды.',
       pronunciationFailed:
         'Айтылымды бағалау сәтсіз аяқталды. Қалған критерийлер мәтін бойынша бағаланды.',
+      officialCriterion: 'IELTS-тің ресми критерийі',
+      officialDescriptors: 'Ресми дескрипторларды ашу',
+    },
+
+    trust: {
+      title: 'Бұл болжам нені бағалай алады?',
+      canTitle: 'Сенімдірек бағалайды',
+      canWriting: 'берілген тапсырмаға жауапты, құрылымды, сөздік қор мен грамматиканы',
+      canSpeaking: 'транскрипттегі мазмұнды, құрылымды, сөздік қор мен грамматиканы; аудио болса, айтылымды',
+      cannotTitle: 'Сенімді бағалай алмайды',
+      cannot:
+        'нақты емтихан жағдайын, адамның өзара әрекетін немесе сертификатталған емтихан алушының шешімін. Транскрипция қатесі мен қысқа жауап болжамды өзгертуі мүмкін.',
+      disclaimer: 'Бұл ресми IELTS нәтижесі емес және оқу, жұмыс не көші-қон шешіміне қолданылмауы керек.',
+      evaluation: 'Мұғалім бағаларымен тексеру әлі жарияланған жоқ; дәлдік туралы мәлімдеме жасалмайды.',
+      evaluationLink: 'Бағалау мәртебесі',
+    },
+
+    comparison: {
+      title: 'Алдыңғы талпыныспен салыстыру',
+      previous: 'Алдыңғы',
+      current: 'Қазіргі',
+      change: 'Өзгеріс',
+      noChange: 'өзгеріс жоқ',
+    },
+
+    privacy: {
+      title: 'Деректерді сақтау және өшіру',
+      audioTitle: 'Аудио',
+      audioBody:
+        'Жадта тек осы бет ашық тұрғанда қалады. Талдау үшін AI сервисіне жіберіледі, бірақ AIELTS тарихына не дерекқорына сақталмайды.',
+      writingTitle: 'Жазба және транскрипт',
+      writingBodySignedOut: 'Тарих осы браузерде сақталады.',
+      writingBodySignedIn: 'Тарих аккаунтыңыздағы дерекқорда сақталады.',
+      saveLabel: 'Келесі талпыныстарды тарихта сақтау',
+      saveHint: 'Өшірсеңіз, жаңа мәтіндер мен нәтижелер сақталмайды. Бұрынғы тарих автоматты түрде өшпейді.',
+      deleteAll: 'Барлық сақталған мәтіндер мен нәтижелерді өшіру',
+      nothingSaved: 'Сақталған дерек жоқ',
+    },
+
+    requestState: {
+      apiTitle: 'AI сервисімен байланысу мүмкін болмады',
+      rateTitle: 'Сұраныс шегіне жеттіңіз',
+      rateHint: 'Көрсетілген уақыттан кейін қайталап көріңіз. Мәтініңіз осы бетте қалады.',
+      retryAfter: '{{n}} минуттан кейін қайталауға болады.',
     },
 
     criteria: {
-      task_achievement: 'Тапсырманы орындау',
+      task_achievement: 'Тапсырманы орындау / жауап беру',
       task_response: 'Тапсырмаға жауап',
       coherence_cohesion: 'Байланыстылық пен құрылым',
       fluency_coherence: 'Еркін сөйлеу мен байланыстылық',
@@ -219,7 +265,7 @@ const translations = {
       confirmClear: 'Барлық тарихты өшіру керек пе?',
       open: 'Ашу',
       delete: 'Өшіру',
-      chartTitle: 'Балл динамикасы',
+      chartTitle: 'Болжамды practice band динамикасы',
       chartHint: 'Кемінде екі талпыныс керек.',
     },
 
@@ -333,7 +379,9 @@ const translations = {
 
     audio: {
       label: 'Listen back',
-      note: 'The recording is sent to AI for analysis but is not saved; it is gone on reload.',
+      note: 'The recording is sent to the AI service for analysis, but AIELTS does not store it; it is gone on reload.',
+      delete: 'Delete current audio',
+      deleted: 'Audio deleted from this device.',
     },
 
     sample: {
@@ -357,7 +405,7 @@ const translations = {
 
     actions: {
       clear: 'Clear',
-      analyze: 'Analyze and score',
+      analyze: 'Analyze and estimate band',
       analyzing: 'Analyzing…',
       retry: 'Try again',
       shortcutHint: 'or ⌘/Ctrl + Enter',
@@ -394,7 +442,7 @@ const translations = {
       loadingHint: 'Usually takes 20–40 seconds',
       emptyState: 'Speak or type something — your feedback will appear here.',
       errorTitle: 'Analysis failed',
-      band: 'Estimated AI band',
+      band: 'Estimated practice band',
       partialBand: 'No overall band',
       partialNote: 'An overall IELTS Speaking band needs pronunciation assessed from audio. The text feedback appears below; this attempt is not added to scored history.',
       taskFeedback: 'Response to the prompt',
@@ -414,10 +462,54 @@ const translations = {
         'The recording was long, so only its first stretch was heard — the marks describe that part of it.',
       pronunciationFailed:
         'Pronunciation assessment failed. The other criteria were marked from the transcript.',
+      officialCriterion: 'Official IELTS criterion',
+      officialDescriptors: 'Open official descriptors',
+    },
+
+    trust: {
+      title: 'What can this estimate assess?',
+      canTitle: 'More reliable for',
+      canWriting: 'response to the supplied task, organization, vocabulary and grammar',
+      canSpeaking: 'content, organization, vocabulary and grammar in the transcript; pronunciation when audio is present',
+      cannotTitle: 'Not reliable for',
+      cannot:
+        'the full test-room experience, human interaction, or a certified examiner’s judgment. Transcription errors and short answers can change the estimate.',
+      disclaimer: 'This is not an official IELTS result and should not be used for study, employment or immigration decisions.',
+      evaluation: 'No teacher-score comparison has been published yet, so no accuracy claim is made.',
+      evaluationLink: 'Evaluation status',
+    },
+
+    comparison: {
+      title: 'Compared with your previous attempt',
+      previous: 'Previous',
+      current: 'Current',
+      change: 'Change',
+      noChange: 'no change',
+    },
+
+    privacy: {
+      title: 'Data retention and deletion',
+      audioTitle: 'Audio',
+      audioBody:
+        'Kept in memory only while this page is open. It is sent to the AI service for analysis, but never stored in AIELTS history or its database.',
+      writingTitle: 'Writing and transcripts',
+      writingBodySignedOut: 'History is stored in this browser.',
+      writingBodySignedIn: 'History is stored in your account database.',
+      saveLabel: 'Save future attempts to history',
+      saveHint: 'Turning this off stops new text and results from being saved. It does not delete existing history.',
+      deleteAll: 'Delete all saved text and results',
+      nothingSaved: 'No saved data',
+    },
+
+    requestState: {
+      apiTitle: 'Could not reach the AI service',
+      rateTitle: 'You’ve reached the request limit',
+      rateHint: 'Try again after the stated time. Your text will stay on this page.',
+      retryAfter: 'You can retry in {{n}} minutes.',
     },
 
     criteria: {
-      task_achievement: 'Task achievement',
+      task_achievement: 'Task achievement / response',
       task_response: 'Task response',
       coherence_cohesion: 'Coherence and cohesion',
       fluency_coherence: 'Fluency and coherence',
@@ -455,7 +547,7 @@ const translations = {
       confirmClear: 'Delete the entire history?',
       open: 'Open',
       delete: 'Delete',
-      chartTitle: 'Band over time',
+      chartTitle: 'Estimated practice band over time',
       chartHint: 'Needs at least two attempts.',
     },
 

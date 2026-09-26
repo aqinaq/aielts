@@ -141,6 +141,31 @@ describe('AnalysisResult', () => {
       'a speaking result with no pronunciation criterion says why',
     )
     assert.ok(!html.includes('criteria.'), 'no untranslated keys')
+    assert.ok(html.includes('IELTS-тің ресми критерийі'), 'each subscore is tied to IELTS criteria')
+    assert.ok(html.includes('ielts-speaking-band-descriptors.pdf'), 'the official descriptor is linked')
+    assert.ok(html.includes('Бұл ресми IELTS нәтижесі емес'), 'the AI limitation is explicit')
+  })
+
+  it('compares every matching criterion with the previous attempt', () => {
+    const previousResult = {
+      ...result,
+      criteria: {
+        ...result.criteria,
+        fluency_coherence: criterion(6.5),
+        lexical_resource: criterion(6),
+        grammatical_range: criterion(6),
+      },
+    }
+    const html = render(h(components.AnalysisResult, {
+      result,
+      previousResult,
+      text,
+      mode: 'speaking',
+      previousBand: 6,
+    }))
+    assert.ok(html.includes('Алдыңғы талпыныспен салыстыру'))
+    assert.ok(html.includes('Еркін сөйлеу мен байланыстылық'))
+    assert.ok(html.includes('өзгеріс жоқ'))
   })
 
   it('renders the pronunciation criterion and drops the caveat when audio was marked', () => {
@@ -282,6 +307,9 @@ describe('HistoryPanel', () => {
     assert.ok(html.includes('Қонақ'))
     assert.ok(html.includes('Google арқылы кіру'))
     assert.ok(html.includes('+0.5'), 'per-attempt delta')
+    assert.ok(html.includes('Деректерді сақтау және өшіру'))
+    assert.ok(html.includes('Келесі талпыныстарды тарихта сақтау'))
+    assert.ok(html.includes('Барлық сақталған мәтіндер мен нәтижелерді өшіру'))
   })
 
   it('shows the synced state when signed in', () => {

@@ -2,7 +2,7 @@
 
 **IELTS practice with specific, bilingual AI feedback.** AIELTS evaluates Writing answers against the supplied task and Speaking responses against the four official criteria. It offers recorded or uploaded audio, timed interview practice, inline corrections, Task 1 charts whose actual values reach the evaluator, and optional cross-device history.
 
-The displayed bands are **AI estimates, not official IELTS scores**. Writing requires a task prompt for Task Achievement. Speaking needs pronunciation evidence from audio before it shows a complete overall band. A key-free sample demonstrates the interface; live analysis needs a server-side Gemini key. See the [portfolio case study](docs/PORTFOLIO.md), [evaluation status](evals/report.md), and [evaluation method](evals/README.md).
+The displayed **estimated practice bands** are not official IELTS scores. Writing requires a task prompt for Task Achievement/Response. Speaking needs pronunciation evidence from audio before it shows a complete overall estimate. A key-free sample demonstrates the interface; live analysis needs a server-side Gemini key. See the [portfolio case study](docs/PORTFOLIO.md), [evaluation status](evals/report.md), [evaluation method](evals/README.md), and [learner terminology study](research/terminology-study.md).
 
 ```bash
 npm ci
@@ -26,10 +26,11 @@ IELTS band шкаласы бойынша сөйлеу мен жазуды бағ
 - **Speaking сұхбаты.** Емтихан алушы сұрағын **сіздің жауабыңызға қарап** құрастырады — дайын тізім емес: «қыс өте суық» десеңіз, келесі сұрақ сол туралы болады. Толық емтиханды (үш бөлім, 11 кезек, ~12 минут) да, **бір бөлімді бөлек** те өтуге болады — Part 2-ні үшінші рет жаттыққанда сегіз артық сұраққа отырудың қажеті жоқ. Part 2-де нақты cue card пен бір минуттық дайындық таймері бар. Соңында сұхбат бір баллмен бағаланады, нақты емтихандағыдай.
 - **Academic Writing Task 1.** График, диаграмма, пирог, кесте — төрт негізгі түрі, SVG-мен беттің өзінде салынады. Ең маңыздысы: **графиктің нақты сандары бағалаушыға беріледі**, сондықтан ол «сіз 6.2 деп жаздыңыз, ал графикте 1.3» деп нақты айта алады. Суретті жүктеу жолында бұл мүмкін емес еді.
 - **Тапсырмалар банкі.** Дайын IELTS Writing/Speaking тапсырмалары + емтихан таймері. Өз тапсырмаңызды да жазуға болады.
-- **IELTS band бағасы.** 0–9, жарты балл қадаммен, әр режимнің төрт ресми критерийі бойынша: Writing-те Task Achievement, Coherence and Cohesion, Lexical Resource, Grammatical Range; Speaking-те Fluency and Coherence, Lexical Resource, Grammatical Range, Pronunciation. Бұл AI бағасы ресми емтихан нәтижесі емес.
+- **Болжамды practice band.** 0–9, жарты балл қадаммен, әр режимнің төрт ресми критерийі бойынша: Writing-те Task Achievement/Response, Coherence and Cohesion, Lexical Resource, Grammatical Range and Accuracy; Speaking-те Fluency and Coherence, Lexical Resource, Grammatical Range and Accuracy, Pronunciation. Әр subscore ресми IELTS дескрипторына сілтеме береді. Бұл ресми емтихан нәтижесі емес.
 - **Мәтін ішіндегі түзетулер.** Қателер түпнұсқа мәтінде белгіленіп, төмендегі тізіммен нөмірленеді.
 - **Қайталанатын қателер.** Барлық талпыныс бойынша қателер санатқа бөлініп жинақталады: «Артикльдер — 8 талпыныстың 6-уында, барлығы 14 рет». Бір талдау мұны айта алмайды.
-- **Тарих және прогресс.** Әр талпыныс `localStorage`-та сақталады, балл динамикасы графикпен көрсетіледі, алдыңғы талпыныспен айырма (+0.5 / −0.5) шығады.
+- **Тарих және прогресс.** Сақтау қосулы болса, талпыныс `localStorage`-та не аккаунтта сақталады. Жалпы динамикамен бірге әр ресми критерийдің алдыңғы талпыныстан өзгерісі көрсетіледі.
+- **Деректерді басқару.** Қолданушы келесі мәтіндер мен транскрипттерді сақтауды өшіре, бүкіл тарихты жоя және ағымдағы аудионы дереу өшіре алады. AIELTS аудионы тарихқа не дерекқорға сақтамайды.
 - **PDF / басып шығару.** Нәтиже панелін мұғалімге жіберуге болады.
 - **Екі тіл.** Интерфейс те, кері байланыс та қазақ және ағылшын тілдерінде. ҚАЗ/ENG қосқышы екеуін бірден ауыстырады — API жауабы екі тілде де келетіндіктен, тіл ауыстырғанда қайта сұраныс жіберілмейді.
 
@@ -151,7 +152,7 @@ Vercel панелінде `GEMINI_API_KEY`, `UPSTASH_REDIS_REST_URL` және `U
 
 Кіру **міндетті емес** — сайт тіркелусіз де толық жұмыс істейді. Қонақ ретінде жиналған тарих алғаш кірген кезде автоматты түрде аккаунтқа көшіріледі, сосын localStorage тазаланады (сол себепті екі рет жүктелмейді).
 
-Талданатын мәтін өзі ешқашан бөлек сақталмайды — тек талпыныс жазбасының ішінде. Кірмеген жағдайда ол браузерден шықпайды.
+Талданатын мәтін өзі ешқашан бөлек сақталмайды — тек талпыныс жазбасының ішінде. Қолданушы «Келесі талпыныстарды тарихта сақтау» параметрін өшірсе, жаңа мәтін мен нәтиже тарихқа жазылмайды; бұрынғы деректі бөлек «Барлығын өшіру» батырмасымен жояды. Кірмеген жағдайда сақталған тарих браузерден шықпайды.
 
 ## Supabase баптау (міндетті емес)
 

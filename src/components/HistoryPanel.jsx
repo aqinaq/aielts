@@ -1,4 +1,4 @@
-import { AlertCircle, Cloud, History, Loader2, LogIn, Trash2 } from 'lucide-react'
+import { AlertCircle, Cloud, Database, History, Loader2, LogIn, Mic2, Trash2 } from 'lucide-react'
 
 import { useLanguage } from '../i18n'
 import ProgressChart from './ProgressChart'
@@ -22,6 +22,8 @@ export default function HistoryPanel({
   onDelete,
   onClear,
   onSignIn,
+  saveAttempts = true,
+  onSaveAttemptsChange = () => {},
 }) {
   const { lang, t } = useLanguage()
 
@@ -138,6 +140,54 @@ export default function HistoryPanel({
           </ul>
         </>
       )}
+
+      <section className="space-y-4 border-t border-slate-100 pt-5" aria-labelledby="privacy-title">
+        <h3 id="privacy-title" className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+          <Database className="size-4 text-slate-400" aria-hidden="true" />
+          {t('privacy.title')}
+        </h3>
+
+        <div className="grid gap-3 text-xs leading-relaxed text-slate-500 sm:grid-cols-2">
+          <div className="rounded-xl bg-slate-50 p-3">
+            <p className="mb-1 flex items-center gap-1.5 font-semibold text-slate-700">
+              <Mic2 className="size-3.5" aria-hidden="true" />
+              {t('privacy.audioTitle')}
+            </p>
+            <p>{t('privacy.audioBody')}</p>
+          </div>
+          <div className="rounded-xl bg-slate-50 p-3">
+            <p className="mb-1 font-semibold text-slate-700">{t('privacy.writingTitle')}</p>
+            <p>{t(isSignedIn ? 'privacy.writingBodySignedIn' : 'privacy.writingBodySignedOut')}</p>
+          </div>
+        </div>
+
+        <label className="flex cursor-pointer items-start gap-3">
+          <input
+            type="checkbox"
+            checked={saveAttempts}
+            onChange={(event) => onSaveAttemptsChange(event.target.checked)}
+            className="mt-0.5 size-4 rounded border-slate-300 text-indigo-600"
+          />
+          <span>
+            <span className="block text-sm font-medium text-slate-700">{t('privacy.saveLabel')}</span>
+            <span className="mt-0.5 block text-xs leading-relaxed text-slate-400">
+              {t('privacy.saveHint')}
+            </span>
+          </span>
+        </label>
+
+        <button
+          type="button"
+          disabled={entries.length === 0}
+          onClick={() => {
+            if (window.confirm(t('history.confirmClear'))) onClear()
+          }}
+          className="flex items-center gap-1.5 text-xs font-medium text-rose-600 transition hover:text-rose-700 disabled:cursor-not-allowed disabled:text-slate-300"
+        >
+          <Trash2 className="size-3.5" aria-hidden="true" />
+          {entries.length ? t('privacy.deleteAll') : t('privacy.nothingSaved')}
+        </button>
+      </section>
     </section>
   )
 }

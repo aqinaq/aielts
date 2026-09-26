@@ -17,6 +17,7 @@
 import { prepareAudio } from './audio.js'
 import { assessSpeech, mergePronunciation } from './pronunciation.js'
 import { computeSpeechMetrics } from './speechMetrics.js'
+import { responseError } from './requestError.js'
 
 const MAX_TEXT_CHARS = 12000
 const MAX_TASK_CHARS = 2000
@@ -28,9 +29,8 @@ async function analyzeText({ text, task, mode, lang, metrics, hasData }) {
     body: JSON.stringify({ text, task, mode, lang, metrics, hasData }),
   })
 
-  const payload = await response.json()
-  if (!response.ok) throw new Error(payload.error)
-  return payload
+  if (!response.ok) throw await responseError(response, 'Analysis request failed')
+  return response.json()
 }
 
 export async function runAnalysis({

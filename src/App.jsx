@@ -67,6 +67,19 @@ export default function App() {
   // Guest attempts live in localStorage and are uploaded once the user signs in.
   const history = useHistory(auth.user)
 
+  const requestError = (error) => {
+    const known = ['noInput', 'noSpeechHeard', 'audioUnreadable']
+    return {
+      message: known.includes(error.message)
+        ? t(`errors.${error.message}`)
+        : (error.message ?? t('errors.requestFailed')),
+      kind: error.kind === 'rate-limit' || error.status === 429 ? 'rate-limit' : 'api',
+      retryAfterMinutes: error.retryAfterSeconds
+        ? Math.max(1, Math.ceil(error.retryAfterSeconds / 60))
+        : null,
+    }
+  }
+
   const draft = drafts[mode]
 
   // Academic Task 1 ships with a chart to describe. Holding only its id in the
@@ -285,6 +298,7 @@ export default function App() {
         text: outcome.text,
         mode: apiMode,
         previousBand: history.previousBandFor(mode),
+        previousResult: history.entries.find((entry) => entry.mode === mode)?.result ?? null,
         notes: outcome.notes,
       })
       if (outcome.data.overall_band != null) {
@@ -299,12 +313,7 @@ export default function App() {
     } catch (error) {
       // `runAnalysis` throws bare keys for the cases it detects itself; anything
       // from the endpoints is already a translated sentence.
-      const known = ['noInput', 'noSpeechHeard', 'audioUnreadable']
-      setApiError(
-        known.includes(error.message)
-          ? t(`errors.${error.message}`)
-          : (error.message ?? t('errors.requestFailed')),
-      )
+      setApiError(requestError(error))
     } finally {
       setIsAnalyzing(false)
     }
@@ -341,6 +350,8 @@ export default function App() {
         text: outcome.text,
         mode: 'speaking',
         previousBand: history.previousBandFor('interview'),
+        previousResult:
+          history.entries.find((entry) => entry.mode === 'interview')?.result ?? null,
         notes: outcome.notes,
       })
       if (outcome.data.overall_band != null) {
@@ -353,12 +364,7 @@ export default function App() {
         })
       }
     } catch (error) {
-      const known = ['noInput', 'noSpeechHeard', 'audioUnreadable']
-      setApiError(
-        known.includes(error.message)
-          ? t(`errors.${error.message}`)
-          : (error.message ?? t('errors.requestFailed')),
-      )
+      setApiError(requestError(error))
     } finally {
       setIsAnalyzing(false)
     }
@@ -381,12 +387,16 @@ export default function App() {
   }, [])
 
   const openEntry = (entry) => {
+    const previous = history.entries
+      .filter((candidate) => candidate.mode === entry.mode && candidate.at < entry.at)
+      .sort((a, b) => b.at - a.at)[0]
     setApiError(null)
     setResult({
       data: entry.result,
       text: entry.text,
       mode: entry.mode === 'write' ? 'writing' : 'speaking',
       previousBand: entry.previousBand,
+      previousResult: previous?.result ?? null,
     })
   }
 
@@ -564,7 +574,9 @@ export default function App() {
                   onClear={clearText}
                 />
 
-                {!isCapturing && !uploaded && <AudioPlayback src={recorder.audioUrl} />}
+                {!isCapturing && !uploaded && (
+                  <AudioPlayback src={recorder.audioUrl} onDelete={recorder.reset} />
+                )}
 
                 {speechMetrics && !uploaded && <SpeechMetrics metrics={speechMetrics} />}
 
@@ -629,6 +641,8 @@ export default function App() {
               onDelete={history.remove}
               onClear={history.clear}
               onSignIn={auth.signIn}
+              saveAttempts={history.saveAttempts}
+              onSaveAttemptsChange={history.setSaveAttempts}
             />
           </section>
 
@@ -644,14 +658,23 @@ export default function App() {
                   <div className="flex gap-3">
                     <AlertCircle className="mt-0.5 size-4 shrink-0" aria-hidden="true" />
                     <div>
-                      <p className="font-medium">{t('result.errorTitle')}</p>
-                      <p className="mt-1">{apiError}</p>
+                      <p className="font-medium">
+                        {t(apiError.kind === 'rate-limit' ? 'requestState.rateTitle' : 'requestState.apiTitle')}
+                      </p>
+                      <p className="mt-1">{apiError.message}</p>
+                      {apiError.kind === 'rate-limit' && (
+                        <p className="mt-1 text-xs text-rose-600">
+                          {apiError.retryAfterMinutes
+                            ? t('requestState.retryAfter', { n: apiError.retryAfterMinutes })
+                            : t('requestState.rateHint')}
+                        </p>
+                      )}
                     </div>
                   </div>
                   <button
                     type="button"
-                    onClick={analyze}
-                    disabled={!canAnalyze}
+                    onClick={mode === 'interview' ? analyzeInterview : analyze}
+                    disabled={mode === 'interview' ? isAnalyzing : !canAnalyze}
                     className="flex items-center gap-1.5 rounded-lg border border-rose-200 bg-white px-3 py-1.5 text-xs font-medium text-rose-700 transition hover:border-rose-300 disabled:opacity-50"
                   >
                     <RotateCcw className="size-3.5" aria-hidden="true" />
@@ -666,6 +689,7 @@ export default function App() {
                   text={result.text}
                   mode={result.mode}
                   previousBand={result.previousBand}
+                  previousResult={result.previousResult}
                   notes={result.notes}
                   isSample={result.isSample}
                 />

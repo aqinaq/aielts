@@ -14,6 +14,8 @@ import {
   removeRemote,
 } from '../lib/history'
 
+const SAVE_PREFERENCE_KEY = 'aielts.saveAttempts.v1'
+
 /**
  * Attempt history that follows the session: localStorage while signed out,
  * Supabase once signed in, with a one-time upload of the guest attempts.
@@ -26,8 +28,27 @@ export function useHistory(user) {
   const [entries, setEntries] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [saveAttempts, setSaveAttemptsState] = useState(true)
 
   const userId = user?.id ?? null
+
+  useEffect(() => {
+    try {
+      setSaveAttemptsState(localStorage.getItem(SAVE_PREFERENCE_KEY) !== 'false')
+    } catch {
+      // Private browsing can make storage unavailable; keep the safe default.
+    }
+  }, [])
+
+  const setSaveAttempts = useCallback((enabled) => {
+    const next = Boolean(enabled)
+    setSaveAttemptsState(next)
+    try {
+      localStorage.setItem(SAVE_PREFERENCE_KEY, String(next))
+    } catch {
+      // The in-memory choice still applies for the rest of this session.
+    }
+  }, [])
 
   useEffect(() => {
     if (!userId) {
@@ -64,6 +85,8 @@ export function useHistory(user) {
     async (draft) => {
       const entry = makeEntry(entries, draft)
 
+      if (!saveAttempts) return entry
+
       if (!userId) {
         setEntries((current) => addLocal(current, entry))
         return entry
@@ -78,7 +101,7 @@ export function useHistory(user) {
         return entry
       }
     },
-    [entries, userId],
+    [entries, saveAttempts, userId],
   )
 
   const remove = useCallback(
@@ -118,6 +141,8 @@ export function useHistory(user) {
     entries,
     isLoading,
     error,
+    saveAttempts,
+    setSaveAttempts,
     add,
     remove,
     clear,

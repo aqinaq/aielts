@@ -1,6 +1,7 @@
 import {
   ArrowRight,
   CheckCircle2,
+  ExternalLink,
   Info,
   Lightbulb,
   PenLine,
@@ -27,6 +28,11 @@ const CRITERION_ORDER = [
   // present when the recording reached the speech endpoint.
   'pronunciation',
 ]
+
+const OFFICIAL_DESCRIPTORS = {
+  speaking: 'https://ielts.org/cdn/ielts-guides/ielts-speaking-band-descriptors.pdf',
+  writing: 'https://ielts.org/cdn/Guides/ielts-writing-band-descriptors.pdf',
+}
 
 const bandTheme = (band) => {
   if (band >= 8) return { bar: 'bg-emerald-500', text: 'text-emerald-600', emoji: '🎯' }
@@ -85,6 +91,7 @@ export default function AnalysisResult({
   text,
   mode,
   previousBand,
+  previousResult = null,
   notes = [],
   isSample = false,
 }) {
@@ -93,6 +100,14 @@ export default function AnalysisResult({
   const theme = hasOverallBand ? bandTheme(result.overall_band) : null
   const delta = !hasOverallBand || previousBand == null ? null : result.overall_band - previousBand
   const hasPronunciation = Boolean(result.criteria?.pronunciation)
+  const descriptorUrl = OFFICIAL_DESCRIPTORS[mode]
+  const comparisons = CRITERION_ORDER.flatMap((key) => {
+    const current = result.criteria?.[key]?.band
+    const previous = previousResult?.criteria?.[key]?.band
+    return Number.isFinite(current) && Number.isFinite(previous)
+      ? [{ key, current, previous, delta: current - previous }]
+      : []
+  })
 
   return (
     <div className="space-y-8">
@@ -176,6 +191,16 @@ export default function AnalysisResult({
               className="space-y-2 rounded-xl border border-slate-200 bg-white p-4"
             >
               <BandBar label={t(`criteria.${key}`)} band={criterion.band} />
+              <a
+                href={descriptorUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1 text-[11px] font-medium text-indigo-600 hover:text-indigo-700"
+                aria-label={`${t('result.officialCriterion')}: ${t(`criteria.${key}`)}`}
+              >
+                {t('result.officialCriterion')}
+                <ExternalLink className="size-3" aria-hidden="true" />
+              </a>
               <p className="text-sm leading-relaxed text-slate-600">
                 {pick(criterion.comment, lang)}
               </p>
@@ -183,6 +208,77 @@ export default function AnalysisResult({
           )
         })}
       </div>
+
+      {comparisons.length > 0 && (
+        <section className="space-y-3 rounded-xl border border-slate-200 bg-slate-50/70 p-4">
+          <h3 className="text-sm font-semibold text-slate-900">{t('comparison.title')}</h3>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[30rem] text-left text-xs">
+              <thead className="text-slate-400">
+                <tr>
+                  <th className="pb-2 font-medium">{t('result.officialCriterion')}</th>
+                  <th className="pb-2 text-right font-medium">{t('comparison.previous')}</th>
+                  <th className="pb-2 text-right font-medium">{t('comparison.current')}</th>
+                  <th className="pb-2 text-right font-medium">{t('comparison.change')}</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200">
+                {comparisons.map(({ key, previous, current, delta: criterionDelta }) => (
+                  <tr key={key}>
+                    <th className="py-2 font-medium text-slate-700">{t(`criteria.${key}`)}</th>
+                    <td className="py-2 text-right tabular-nums text-slate-500">{previous.toFixed(1)}</td>
+                    <td className="py-2 text-right font-medium tabular-nums text-slate-900">{current.toFixed(1)}</td>
+                    <td className={`py-2 text-right font-medium tabular-nums ${
+                      criterionDelta > 0 ? 'text-emerald-600' : criterionDelta < 0 ? 'text-rose-600' : 'text-slate-400'
+                    }`}>
+                      {criterionDelta === 0
+                        ? t('comparison.noChange')
+                        : `${criterionDelta > 0 ? '+' : ''}${criterionDelta.toFixed(1)}`}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+
+      <section className="space-y-3 rounded-xl border border-sky-100 bg-sky-50/60 p-4">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-slate-900">
+          <Info className="size-4 text-sky-600" aria-hidden="true" />
+          {t('trust.title')}
+        </h3>
+        <dl className="grid gap-3 text-xs leading-relaxed sm:grid-cols-2">
+          <div>
+            <dt className="font-semibold text-slate-700">{t('trust.canTitle')}</dt>
+            <dd className="mt-1 text-slate-600">
+              {t(mode === 'writing' ? 'trust.canWriting' : 'trust.canSpeaking')}
+            </dd>
+          </div>
+          <div>
+            <dt className="font-semibold text-slate-700">{t('trust.cannotTitle')}</dt>
+            <dd className="mt-1 text-slate-600">{t('trust.cannot')}</dd>
+          </div>
+        </dl>
+        <p className="text-xs font-medium leading-relaxed text-sky-900">{t('trust.disclaimer')}</p>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-sky-100 pt-3 text-xs">
+          <span className="text-slate-500">{t('trust.evaluation')}</span>
+          <span className="flex flex-wrap gap-3">
+            <a href="/evaluation.html" className="font-medium text-indigo-600 hover:text-indigo-700">
+              {t('trust.evaluationLink')}
+            </a>
+            <a
+              href={descriptorUrl}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex items-center gap-1 font-medium text-indigo-600 hover:text-indigo-700"
+            >
+              {t('result.officialDescriptors')}
+              <ExternalLink className="size-3" aria-hidden="true" />
+            </a>
+          </span>
+        </div>
+      </section>
 
       {result.task_feedback && (
         <section className="rounded-xl border border-indigo-100 bg-indigo-50/40 p-4">
